@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "ghostor",
+  "version": "${version}",
+  "name": "Ghostor Client",
+  "description": "A refined client-side Minecraft interface",
+  "authors": [
+    "Ghostor Client"
+  ],
+  "contact": {
+    "homepage": ""
+  },
+  "license": "See bundled LICENSE",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "dev.lvstrng.argon.Main"
+    ]
+  },
+  "mixins": [
+    "client.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "~1.21.11"
+  },
+  "recommends": {
+    "sodium": "*"
+  },
+  "conflicts": {
+    "slight-gui-modifications": "*",
+    "vulkanmod": "*"
+  },
+  "custom": {
+    "modmenu": {
+      "links": {
+        "modmenu.discord": "https://discord.gg/dCzT9XHEWu"
+      }
+    }
+  }
+}
