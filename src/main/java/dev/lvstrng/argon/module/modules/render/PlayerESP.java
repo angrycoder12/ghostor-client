@@ -13,16 +13,13 @@ import dev.lvstrng.argon.utils.EncryptedString;
 import dev.lvstrng.argon.utils.ProjectionUtils;
 import dev.lvstrng.argon.utils.RenderUtils;
 import dev.lvstrng.argon.utils.Utils;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.render.Camera;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.RotationAxis;
-import net.minecraft.util.math.Vec3d;
-
 import java.awt.*;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 public final class PlayerESP extends Module implements GameRenderListener, HudListener {
 	public enum Mode {
@@ -61,57 +58,35 @@ public final class PlayerESP extends Module implements GameRenderListener, HudLi
 
 	@Override
 	public void onGameRender(GameRenderEvent event) {
-		if (mc.world == null || mc.player == null) {
+		if (mc.level == null || mc.player == null) {
 			return;
 		}
 
-		Camera camera = mc.gameRenderer.getCamera();
-		if (camera == null) {
-			return;
-		}
-
-		event.matrices.push();
-		Vec3d cameraPos = camera.getCameraPos();
-		event.matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
-		event.matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(camera.getYaw() + 180.0F));
-		event.matrices.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
-
-		for (PlayerEntity player : mc.world.getPlayers()) {
+		for (Player player : mc.level.players()) {
 			if (!shouldRender(player)) {
 				continue;
 			}
 
-			Box box = getRenderBox(player, event.delta).expand(0.02);
+			AABB box = getRenderBox(player, event.delta).inflate(0.02);
 			if (mode.isMode(Mode.ThreeD)) {
-				RenderUtils.renderFilledBox(
-						event.matrices,
-						(float) box.minX,
-						(float) box.minY,
-						(float) box.minZ,
-						(float) box.maxX,
-						(float) box.maxY,
-						(float) box.maxZ,
-						getColor(alpha.getValueInt()).brighter()
-				);
+				RenderUtils.renderFilledBox(box, getColor(alpha.getValueInt()).brighter());
 				if (threeDOutline.getValue())
-					RenderUtils.renderBoxOutline(event.matrices, box, getColor(255), width.getValueInt());
+					RenderUtils.renderBoxOutline(box, getColor(255), width.getValueInt());
 			}
 
-			if (tracers.getValue() && mc.crosshairTarget != null) {
-				RenderUtils.renderLine(event.matrices, Utils.getMainColor(255, 1), mc.crosshairTarget.getPos(), player.getLerpedPos(RenderUtils.tickProgress()));
+			if (tracers.getValue() && mc.hitResult != null) {
+				RenderUtils.renderLine(Utils.getMainColor(255, 1), mc.hitResult.getLocation(), player.getPosition(RenderUtils.tickProgress()));
 			}
 		}
-
-		event.matrices.pop();
 	}
 
 	@Override
 	public void onRenderHud(HudEvent event) {
-		if (!mode.isMode(Mode.TwoD) || mc.world == null || mc.player == null) {
+		if (!mode.isMode(Mode.TwoD) || mc.level == null || mc.player == null) {
 			return;
 		}
 
-		for (PlayerEntity player : mc.world.getPlayers()) {
+		for (Player player : mc.level.players()) {
 			if (!shouldRender(player)) {
 				continue;
 			}
@@ -132,17 +107,17 @@ public final class PlayerESP extends Module implements GameRenderListener, HudLi
 	}
 
 	private boolean shouldRender(Entity entity) {
-		return entity instanceof PlayerEntity player && player != mc.player && player.isAlive();
+		return entity instanceof Player player && player != mc.player && player.isAlive();
 	}
 
-	private Box getRenderBox(PlayerEntity player, float tickDelta) {
-		double x = MathHelper.lerp(tickDelta, player.lastX, player.getX());
-		double y = MathHelper.lerp(tickDelta, player.lastY, player.getY());
-		double z = MathHelper.lerp(tickDelta, player.lastZ, player.getZ());
-		return player.getBoundingBox().offset(x - player.getX(), y - player.getY(), z - player.getZ());
+	private AABB getRenderBox(Player player, float tickDelta) {
+		double x = Mth.lerp(tickDelta, player.xo, player.getX());
+		double y = Mth.lerp(tickDelta, player.yo, player.getY());
+		double z = Mth.lerp(tickDelta, player.zo, player.getZ());
+		return player.getBoundingBox().move(x - player.getX(), y - player.getY(), z - player.getZ());
 	}
 
-	private ScreenBounds projectBounds(Box box) {
+	private ScreenBounds projectBounds(AABB box) {
 		double minX = Double.POSITIVE_INFINITY;
 		double minY = Double.POSITIVE_INFINITY;
 		double maxX = Double.NEGATIVE_INFINITY;
@@ -152,7 +127,7 @@ public final class PlayerESP extends Module implements GameRenderListener, HudLi
 		for (double x : new double[]{box.minX, box.maxX}) {
 			for (double y : new double[]{box.minY, box.maxY}) {
 				for (double z : new double[]{box.minZ, box.maxZ}) {
-					ProjectionUtils.ProjectedPoint projected = ProjectionUtils.project(new Vec3d(x, y, z));
+					ProjectionUtils.ProjectedPoint projected = ProjectionUtils.project(new Vec3(x, y, z));
 					if (projected == null) {
 						continue;
 					}
@@ -173,7 +148,7 @@ public final class PlayerESP extends Module implements GameRenderListener, HudLi
 		return new ScreenBounds((int) Math.floor(minX), (int) Math.floor(minY), (int) Math.ceil(maxX), (int) Math.ceil(maxY));
 	}
 
-	private void drawOutline(DrawContext context, ScreenBounds bounds, int thickness, Color color) {
+	private void drawOutline(GuiGraphicsExtractor context, ScreenBounds bounds, int thickness, Color color) {
 		int packedColor = color.getRGB();
 		context.fill(bounds.minX, bounds.minY, bounds.maxX, bounds.minY + thickness, packedColor);
 		context.fill(bounds.minX, bounds.maxY - thickness, bounds.maxX, bounds.maxY, packedColor);

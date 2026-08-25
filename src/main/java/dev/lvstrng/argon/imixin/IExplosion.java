@@ -1,7 +1,7 @@
 package dev.lvstrng.argon.imixin;
 
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.phys.Vec3;
 
 public interface IExplosion {
-	void set(Vec3d pos, float power, boolean createFire);
+	void set(Vec3 pos, float power, boolean createFire);
 }

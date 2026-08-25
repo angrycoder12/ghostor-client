@@ -1,12 +1,13 @@
 package dev.lvstrng.argon.mixin;
 
+import com.mojang.blaze3d.platform.Window;
 import dev.lvstrng.argon.Argon;
 import dev.lvstrng.argon.event.EventManager;
 import dev.lvstrng.argon.event.events.*;
 import dev.lvstrng.argon.utils.MouseSimulation;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.util.Window;
-import net.minecraft.client.world.ClientWorld;
+import dev.lvstrng.argon.module.modules.misc.Freecam;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Final;
@@ -17,11 +18,16 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(MinecraftClient.class)
+@Mixin(Minecraft.class)
 public class MinecraftClientMixin {
+	@Inject(method = "setLevel", at = @At("HEAD"))
+	private void ghostor$clearFreecamWorldState(ClientLevel newLevel, CallbackInfo ci) {
+		Freecam.onWorldChanged();
+	}
+
 	@Shadow
 	@Nullable
-	public ClientWorld world;
+	public ClientLevel level;
 
 	@Shadow
 	@Final
@@ -29,19 +35,19 @@ public class MinecraftClientMixin {
 
 	@Inject(method = "tick", at = @At("HEAD"))
 	private void onTick(CallbackInfo ci) {
-		if (world != null) {
+		if (level != null) {
 			TickListener.TickEvent event = new TickListener.TickEvent();
 
 			EventManager.fire(event);
 		}
 	}
 
-	@Inject(method = "onResolutionChanged", at = @At("HEAD"))
+	@Inject(method = "resizeGui", at = @At("HEAD"))
 	private void onResolutionChanged(CallbackInfo ci) {
 		EventManager.fire(new ResolutionListener.ResolutionEvent(this.window));
 	}
 
-	@Inject(method = "doItemUse", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "startUseItem", at = @At("HEAD"), cancellable = true)
 	private void onItemUse(CallbackInfo ci) {
 		ItemUseListener.ItemUseEvent event = new ItemUseListener.ItemUseEvent();
 
@@ -54,7 +60,7 @@ public class MinecraftClientMixin {
 		}
 	}
 
-	@Inject(method = "doAttack", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "startAttack", at = @At("HEAD"), cancellable = true)
 	private void onAttack(CallbackInfoReturnable<Boolean> cir) {
 		AttackListener.AttackEvent event = new AttackListener.AttackEvent();
 
@@ -67,7 +73,7 @@ public class MinecraftClientMixin {
 		}
 	}
 
-	@Inject(method = "handleBlockBreaking", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "continueAttack", at = @At("HEAD"), cancellable = true)
 	private void onBlockBreaking(boolean breaking, CallbackInfo ci) {
 		BlockBreakingListener.BlockBreakingEvent event = new BlockBreakingListener.BlockBreakingEvent();
 
@@ -80,7 +86,7 @@ public class MinecraftClientMixin {
 		}
 	}
 
-	@Inject(method = "stop", at = @At("HEAD"))
+	@Inject(method = "close", at = @At("HEAD"))
 	private void onClose(CallbackInfo ci) {
 		Argon.INSTANCE.getProfileManager().saveProfile();
 	}

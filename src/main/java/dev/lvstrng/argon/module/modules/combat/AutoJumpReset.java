@@ -33,7 +33,7 @@ public final class AutoJumpReset extends Module implements TickListener {
 	@Override
 	public void onTick() {
 		if(MathUtils.randomInt(1, 100) <= chance.getValueInt()) {
-			if (mc.currentScreen != null)
+			if (mc.gui.screen() != null)
 				return;
 
 			if (mc.player.isUsingItem())
@@ -42,14 +42,14 @@ public final class AutoJumpReset extends Module implements TickListener {
 			if (mc.player.hurtTime == 0)
 				return;
 
-			if (mc.player.hurtTime == mc.player.maxHurtTime)
+			if (mc.player.hurtTime == mc.player.hurtDuration)
 				return;
 
-			if (!mc.player.isOnGround())
+			if (!mc.player.onGround())
 				return;
 
 			if (mc.player.hurtTime == 9 && MathUtils.randomInt(1, 100) <= chance.getValueInt())
-				mc.player.jump();
+				mc.player.jumpFromGround();
 		}
 	}
 }

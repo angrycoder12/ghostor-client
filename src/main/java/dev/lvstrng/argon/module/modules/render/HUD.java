@@ -12,11 +12,10 @@ import dev.lvstrng.argon.utils.EncryptedString;
 import dev.lvstrng.argon.utils.RenderUtils;
 import dev.lvstrng.argon.utils.TextRenderer;
 import dev.lvstrng.argon.utils.Utils;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.network.PlayerListEntry;
-
 import java.awt.*;
 import java.util.List;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.multiplayer.PlayerInfo;
 
 public final class HUD extends Module implements HudListener {
 	private static final CharSequence argon = EncryptedString.of("Ghostor Client |");
@@ -46,7 +45,7 @@ public final class HUD extends Module implements HudListener {
 
 	@Override
 	public void onRenderHud(HudEvent event) {
-		if (mc.currentScreen != Argon.INSTANCE.clickGui) {
+		if (mc.gui.screen() != Argon.INSTANCE.clickGui) {
 			final List<Module> enabledModules = Argon.INSTANCE.
 					getModuleManager().
 					getEnabledModules().
@@ -62,10 +61,10 @@ public final class HUD extends Module implements HudListener {
 					}).
 					toList();
 
-			DrawContext context = event.context;
+			GuiGraphicsExtractor context = event.context;
 			boolean customFont = ClickGUI.customFont.getValue();
 
-			if (!(mc.currentScreen instanceof ClickGui)) {
+			if (!(mc.gui.screen() instanceof ClickGui)) {
 
 				if (info.getValue() && mc.player != null) {
 					RenderUtils.unscaledProjection(context);
@@ -73,10 +72,10 @@ public final class HUD extends Module implements HudListener {
 					int argonOffset2 = 10 + TextRenderer.getWidth(argon);
 
 					String ping = "Ping: "; // shrimple null check
-					String fps = "FPS: " + mc.getCurrentFps() + " |";
-					String server = mc.getCurrentServerEntry() == null ? "None" : mc.getCurrentServerEntry().address;
-					if (mc != null && mc.player != null && mc.getNetworkHandler() != null) {
-						PlayerListEntry entry = mc.getNetworkHandler().getPlayerListEntry(mc.player.getUuid());
+					String fps = "FPS: " + mc.getFps() + " |";
+					String server = mc.getCurrentServer() == null ? "None" : mc.getCurrentServer().ip;
+					if (mc != null && mc.player != null && mc.getConnection() != null) {
+						PlayerInfo entry = mc.getConnection().getPlayerInfo(mc.player.getUUID());
 						if (entry != null) {
 							ping += entry.getLatency() + " |";
 						} else {
@@ -104,14 +103,14 @@ public final class HUD extends Module implements HudListener {
 						RenderUtils.unscaledProjection(context);
 						int charOffset = 6 + TextRenderer.getWidth(module.getName());
 
-			RenderUtils.renderRoundedQuad(context, new Color(0, 0, 0, 175), 0, offset - 4, (charOffset + 5), offset + (mc.textRenderer.fontHeight * 2) - 1, 0, 0, 0, 5, 10);
-						context.fillGradient(0, offset - 4, 2, offset + (mc.textRenderer.fontHeight * 2), Utils.getMainColor(255, (enabledModules.indexOf(module))).getRGB(), Utils.getMainColor(255, (enabledModules.indexOf(module)) + 1).getRGB());
+			RenderUtils.renderRoundedQuad(context, new Color(0, 0, 0, 175), 0, offset - 4, (charOffset + 5), offset + (mc.font.lineHeight * 2) - 1, 0, 0, 0, 5, 10);
+						context.fillGradient(0, offset - 4, 2, offset + (mc.font.lineHeight * 2), Utils.getMainColor(255, (enabledModules.indexOf(module))).getRGB(), Utils.getMainColor(255, (enabledModules.indexOf(module)) + 1).getRGB());
 
 						int charOffset2 = customFont ? 5 : 8;
 
 						TextRenderer.drawString(module.getName(), context, charOffset2, offset + (customFont ? 1 : 0), Utils.getMainColor(255, (enabledModules.indexOf(module))).getRGB());
 
-						offset += (mc.textRenderer.fontHeight * 2) + 3;
+						offset += (mc.font.lineHeight * 2) + 3;
 						RenderUtils.scaledProjection(context);
 					}
 				}

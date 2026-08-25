@@ -3,18 +3,16 @@ package dev.lvstrng.argon.module;
 import dev.lvstrng.argon.Argon;
 import dev.lvstrng.argon.event.EventManager;
 import dev.lvstrng.argon.module.setting.Setting;
-
-import net.minecraft.client.MinecraftClient;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import net.minecraft.client.Minecraft;
 
 public abstract class Module implements Serializable {
 	private final List<Setting<?>> settings = new ArrayList<>();
 	public final EventManager eventManager = Argon.INSTANCE.eventManager;
-	protected MinecraftClient mc = MinecraftClient.getInstance();
+	protected Minecraft mc = Minecraft.getInstance();
 	private CharSequence name;
 	private CharSequence description;
 	private boolean enabled;

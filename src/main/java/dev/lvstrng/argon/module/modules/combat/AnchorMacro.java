@@ -8,18 +8,18 @@ import dev.lvstrng.argon.module.setting.BooleanSetting;
 import dev.lvstrng.argon.module.setting.KeybindSetting;
 import dev.lvstrng.argon.module.setting.NumberSetting;
 import dev.lvstrng.argon.utils.*;
-import net.minecraft.block.Blocks;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.item.Items;
-import net.minecraft.item.ShieldItem;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.HashSet;
 import java.util.Set;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.ShieldItem;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 
 //not mine
 public final class AnchorMacro extends Module implements TickListener, ItemUseListener {
@@ -71,10 +71,10 @@ public final class AnchorMacro extends Module implements TickListener, ItemUseLi
 
 	@Override
 	public void onTick() {
-		if (mc.currentScreen != null)
+		if (mc.gui.screen() != null)
 			return;
 
-		if (((mc.player.getMainHandStack().getItem().getComponents().contains(DataComponentTypes.FOOD) || mc.player.getMainHandStack().getItem() instanceof ShieldItem || mc.player.getOffHandStack().getItem() instanceof ShieldItem || mc.player.getOffHandStack().getItem().getComponents().contains(DataComponentTypes.FOOD)) && GLFW.glfwGetMouseButton(mc.getWindow().getHandle(), GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS) && whileUse.getValue())
+		if (((mc.player.getMainHandItem().getItem().components().has(DataComponents.FOOD) || mc.player.getMainHandItem().getItem() instanceof ShieldItem || mc.player.getOffhandItem().getItem() instanceof ShieldItem || mc.player.getOffhandItem().getItem().components().has(DataComponents.FOOD)) && GLFW.glfwGetMouseButton(mc.getWindow().handle(), GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS) && whileUse.getValue())
 			return;
 
 		if(stopOnKill.getValue() && WorldUtils.isDeadBodyNearby())
@@ -83,18 +83,18 @@ public final class AnchorMacro extends Module implements TickListener, ItemUseLi
 		int randomInt = MathUtils.randomInt(1, 100);
 
 		if (KeyUtils.isKeyPressed(GLFW.GLFW_MOUSE_BUTTON_RIGHT)) {
-			if (mc.crosshairTarget instanceof BlockHitResult hit) {
+			if (mc.hitResult instanceof BlockHitResult hit) {
 				if (BlockUtils.isBlock(hit.getBlockPos(), Blocks.RESPAWN_ANCHOR)) {
 					if (onlyOwn.getValue() && !ownedAnchors.contains(hit.getBlockPos()))
 						return;
 
-					mc.options.useKey.setPressed(false);
+					mc.options.keyUse.setDown(false);
 
 					if (BlockUtils.isAnchorNotCharged(hit.getBlockPos())) {
 						randomInt = MathUtils.randomInt(1, 100);
 
 						if (randomInt <= placeChance.getValueInt()) {
-							if (!mc.player.getMainHandStack().isOf(Items.GLOWSTONE)) {
+							if (!mc.player.getMainHandItem().is(Items.GLOWSTONE)) {
 								if (switchClock != switchDelay.getValueInt()) {
 									switchClock++;
 									return;
@@ -108,7 +108,7 @@ public final class AnchorMacro extends Module implements TickListener, ItemUseLi
 								}
 							}
 
-							if (mc.player.getMainHandStack().isOf(Items.GLOWSTONE)) {
+							if (mc.player.getMainHandItem().is(Items.GLOWSTONE)) {
 								if (glowstoneClock != glowstoneDelay.getValueInt()) {
 									glowstoneClock++;
 									return;
@@ -172,35 +172,35 @@ public final class AnchorMacro extends Module implements TickListener, ItemUseLi
 
 	@Override
 	public void onItemUse(ItemUseEvent event) {
-		if (mc.crosshairTarget instanceof BlockHitResult hitResult && hitResult.getType() == HitResult.Type.BLOCK) {
-			if (mc.player.getMainHandStack().getItem() == Items.RESPAWN_ANCHOR) {
-				Direction dir = hitResult.getSide();
+		if (mc.hitResult instanceof BlockHitResult hitResult && hitResult.getType() == HitResult.Type.BLOCK) {
+			if (mc.player.getMainHandItem().getItem() == Items.RESPAWN_ANCHOR) {
+				Direction dir = hitResult.getDirection();
 				BlockPos pos = hitResult.getBlockPos();
 
-				if (!mc.world.getBlockState(pos).isReplaceable()) {
+				if (!mc.level.getBlockState(pos).canBeReplaced()) {
 					switch (dir) {
 						case UP: {
-							ownedAnchors.add(pos.add(0, 1, 0));
+							ownedAnchors.add(pos.offset(0, 1, 0));
 							break;
 						}
 						case DOWN: {
-							ownedAnchors.add(pos.add(0, -1, 0));
+							ownedAnchors.add(pos.offset(0, -1, 0));
 							break;
 						}
 						case EAST: {
-							ownedAnchors.add(pos.add(1, 0, 0));
+							ownedAnchors.add(pos.offset(1, 0, 0));
 							break;
 						}
 						case WEST: {
-							ownedAnchors.add(pos.add(-1, 0, 0));
+							ownedAnchors.add(pos.offset(-1, 0, 0));
 							break;
 						}
 						case NORTH: {
-							ownedAnchors.add(pos.add(0, 0, -1));
+							ownedAnchors.add(pos.offset(0, 0, -1));
 							break;
 						}
 						case SOUTH: {
-							ownedAnchors.add(pos.add(0, 0, 1));
+							ownedAnchors.add(pos.offset(0, 0, 1));
 							break;
 						}
 					}

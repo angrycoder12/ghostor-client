@@ -10,10 +10,10 @@ import dev.lvstrng.argon.module.setting.ModeSetting;
 import dev.lvstrng.argon.module.setting.NumberSetting;
 import dev.lvstrng.argon.utils.*;
 import dev.lvstrng.argon.utils.rotation.Rotation;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.hit.EntityHitResult;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.Vec3;
 import org.lwjgl.glfw.GLFW;
 
 public final class AimAssist extends Module implements HudListener, MouseMoveListener {
@@ -113,17 +113,17 @@ public final class AimAssist extends Module implements HudListener, MouseMoveLis
 			timer.reset();
 		}
 
-		if (mc.player == null || mc.currentScreen != null)
+		if (mc.player == null || mc.gui.screen() != null)
 			return;
 
-		if (onlyWeapon.getValue() && !WorldUtils.isWeapon(mc.player.getMainHandStack()))
+		if (onlyWeapon.getValue() && !WorldUtils.isWeapon(mc.player.getMainHandItem()))
 			return;
 
-		if (onLeftClick.getValue() && GLFW.glfwGetMouseButton(mc.getWindow().getHandle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS)
+		if (onLeftClick.getValue() && GLFW.glfwGetMouseButton(mc.getWindow().handle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS)
 			return;
 
-		PlayerEntity target = WorldUtils.findNearestPlayer(mc.player, radius.getValueFloat(), seeOnly.getValue(), true);
-		if (stickyAim.getValue() && mc.player.getAttacking() instanceof PlayerEntity player && player.distanceTo(mc.player) < radius.getValue())
+		Player target = WorldUtils.findNearestPlayer(mc.player, radius.getValueFloat(), seeOnly.getValue(), true);
+		if (stickyAim.getValue() && mc.player.getLastHurtMob() instanceof Player player && player.distanceTo(mc.player) < radius.getValue())
 			target = player;
 
 		if (target == null)
@@ -135,7 +135,7 @@ public final class AimAssist extends Module implements HudListener, MouseMoveLis
 			resetSpeed.reset();
 		}
 
-		Vec3d targetPos = posMode.isMode(PosMode.Normal) ? target.getEntityPos() : target.getLerpedPos(RenderUtils.tickProgress());
+		Vec3 targetPos = posMode.isMode(PosMode.Normal) ? target.position() : target.getPosition(RenderUtils.tickProgress());
 
 		if (aimAt.isMode(AimMode.Chest))
 			targetPos = targetPos.add(0, -0.5, 0);
@@ -157,22 +157,22 @@ public final class AimAssist extends Module implements HudListener, MouseMoveLis
 		float yawStrength = yaw / 50;
 		float pitchStrength = pitch / 50;
 
-		float yaw = mc.player.getYaw();
-		float pitch = mc.player.getPitch();
+		float yaw = mc.player.getYRot();
+		float pitch = mc.player.getXRot();
 
 		if (lerp.isMode(LerpMode.Smoothstep)) {
-			yaw = (float) smoothStepLerp(yawStrength, mc.player.getYaw(), (float) rotation.yaw());
-			pitch = (float) smoothStepLerp(pitchStrength, mc.player.getPitch(), (float) rotation.pitch());
+			yaw = (float) smoothStepLerp(yawStrength, mc.player.getYRot(), (float) rotation.yaw());
+			pitch = (float) smoothStepLerp(pitchStrength, mc.player.getXRot(), (float) rotation.pitch());
 		}
 
 		if (lerp.isMode(LerpMode.Normal)) {
-			yaw = lerp(yawStrength, mc.player.getYaw(), (float) (rotation.yaw()));
-			pitch = lerp(pitchStrength, mc.player.getPitch(), (float) (rotation.pitch()));
+			yaw = lerp(yawStrength, mc.player.getYRot(), (float) (rotation.yaw()));
+			pitch = lerp(pitchStrength, mc.player.getXRot(), (float) (rotation.pitch()));
 		}
 
 		if (lerp.isMode(LerpMode.EaseOut)) {
-			yaw = (float) easeOutBackDegrees(mc.player.getYaw(), rotation.yaw(), yawStrength * RenderUtils.frameDelta());
-			pitch = (float) easeOutBackDegrees(mc.player.getPitch(), rotation.pitch(), pitchStrength * RenderUtils.frameDelta());
+			yaw = (float) easeOutBackDegrees(mc.player.getYRot(), rotation.yaw(), yawStrength * RenderUtils.frameDelta());
+			pitch = (float) easeOutBackDegrees(mc.player.getXRot(), rotation.pitch(), pitchStrength * RenderUtils.frameDelta());
 		}
 
 		if (MathUtils.randomInt(1, 100) <= randomization.getValueInt()) {
@@ -181,21 +181,21 @@ public final class AimAssist extends Module implements HudListener, MouseMoveLis
 					if(stopAtTargetHorizontal.getValue() && WorldUtils.getHitResult(radius.getValue()) instanceof EntityHitResult hitResult && hitResult.getEntity() == target)
 						return;
 
-					mc.player.setYaw(yaw);
+					mc.player.setYRot(yaw);
 				}
 
 				if (pitchAssist.getValue()) {
 					if(stopAtTargetVertical.getValue() && WorldUtils.getHitResult(radius.getValue()) instanceof EntityHitResult hitResult && hitResult.getEntity() == target)
 						return;
 
-					mc.player.setPitch(pitch);
+					mc.player.setXRot(pitch);
 				}
 			}
 		}
 	}
 
 	public float lerp(float delta, float start, float end) {
-		return start + (MathHelper.wrapDegrees(end - start) * delta);
+		return start + (Mth.wrapDegrees(end - start) * delta);
 	}
 
 	public static double easeOutBackDegrees(double start, double end, float speed) {
@@ -203,7 +203,7 @@ public final class AimAssist extends Module implements HudListener, MouseMoveLis
 		double c3 = 2.70158;
 		double x = 1 - Math.pow(1 - (double) speed, 3);
 
-		return start + MathHelper.wrapDegrees(end - start) * (1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2));
+		return start + Mth.wrapDegrees(end - start) * (1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2));
 	}
 
 	public double smoothStepLerp(double delta, double start, double end) {
@@ -212,7 +212,7 @@ public final class AimAssist extends Module implements HudListener, MouseMoveLis
 
 		double t = delta * delta * (3 - 2 * delta);
 
-		value = start + MathHelper.wrapDegrees(end - start) * t;
+		value = start + Mth.wrapDegrees(end - start) * t;
 		return value;
 	}
 

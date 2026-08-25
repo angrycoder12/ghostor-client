@@ -6,14 +6,10 @@ import dev.lvstrng.argon.module.Category;
 import dev.lvstrng.argon.module.Module;
 import dev.lvstrng.argon.module.modules.client.ClickGUI;
 import dev.lvstrng.argon.utils.*;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.util.math.MathHelper;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL13;
-
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 public final class Window {
 	public List<ModuleButton> moduleButtons = new ArrayList<>();
@@ -26,6 +22,7 @@ public final class Window {
 	private int dragX, dragY;
 	private int prevX, prevY;
 	private int scrollOffset;
+	private int laidOutHeight;
 	public ClickGui parent;
 
 	public Window(int x, int y, int width, int height, Category category, ClickGui parent) {
@@ -34,7 +31,7 @@ public final class Window {
 		this.width = width;
 		this.dragging = false;
 		this.extended = true;
-		this.height = 42;
+		this.height = 46;
 		this.contentHeight = height;
 		this.category = category;
 		this.parent = parent;
@@ -51,9 +48,9 @@ public final class Window {
 		}
 	}
 
-	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-		GhostorTheme.panel(context, prevX, prevY, prevX + width, prevY + contentHeight, GhostorTheme.SURFACE_ELEVATED, GhostorTheme.RADIUS);
-		GhostorTheme.outline(context, prevX, prevY, prevX + width, prevY + contentHeight, GhostorTheme.BORDER, GhostorTheme.RADIUS);
+	public void render(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
+		GhostorTheme.panel(context, prevX, prevY, prevX + width, prevY + contentHeight, new Color(12, 17, 26, 150), 9);
+		GhostorTheme.outline(context, prevX, prevY, prevX + width, prevY + contentHeight, GhostorTheme.BORDER, 9);
 		context.enableScissor(prevX + 1, prevY + 1, prevX + width - 1, prevY + contentHeight - 1);
 
 		updateButtons(delta);
@@ -88,24 +85,6 @@ public final class Window {
 	}
 
 	public void mouseClicked(double mouseX, double mouseY, int button) {
-		if (isHovered(mouseX, mouseY)) {
-			switch (button) {
-				case 0: {
-					if(!parent.isDraggingAlready()) {
-						dragging = true;
-						dragX = (int) (mouseX - x);
-						dragY = (int) (mouseY - y);
-					}
-					break;
-				}
-				case 1: {
-					if (!dragging) {
-						//extended = !extended;
-					}
-					break;
-				}
-			}
-		}
 		if (extended)
 			for (ModuleButton moduleButton : moduleButtons)
 				moduleButton.mouseClicked(mouseX, mouseY, button);
@@ -131,6 +110,9 @@ public final class Window {
 
 			offset += (int) supHeight;
 		}
+		laidOutHeight = offset - scrollOffset + 8;
+		int minimumScroll = Math.min(0, contentHeight - laidOutHeight);
+		scrollOffset = Math.max(minimumScroll, Math.min(0, scrollOffset));
 	}
 
 	public Category getCategory() { return category; }
@@ -153,7 +135,10 @@ public final class Window {
 	}
 
 	public void mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-		scrollOffset = Math.min(0, Math.max(-1600, scrollOffset + (int) (verticalAmount * 28)));
+		if (mouseX < prevX || mouseX > prevX + width || mouseY < prevY || mouseY > prevY + contentHeight)
+			return;
+		int minimumScroll = Math.min(0, contentHeight - laidOutHeight);
+		scrollOffset = Math.max(minimumScroll, Math.min(0, scrollOffset + (int) (verticalAmount * 30)));
 	}
 
 	public int getX() {
@@ -191,10 +176,5 @@ public final class Window {
 	public void updatePosition(double mouseX, double mouseY, float delta) {
 		prevX = x;
 		prevY = y;
-
-		if (dragging) {
-			x = (int) MathUtils.goodLerp((float) 0.3 * delta, isHovered(mouseX, mouseY) ? x : prevX, mouseX - dragX);
-			y = (int) MathUtils.goodLerp((float) 0.3 * delta, isHovered(mouseX, mouseY) ? y : prevY, mouseY - dragY);
-        }
 	}
 }

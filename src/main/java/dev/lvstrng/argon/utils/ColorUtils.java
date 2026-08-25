@@ -1,7 +1,5 @@
 package dev.lvstrng.argon.utils;
 
-import net.minecraft.util.math.MathHelper;
-
 import java.awt.*;
 
 public final class ColorUtils {

@@ -6,14 +6,12 @@ import dev.lvstrng.argon.module.setting.Setting;
 import dev.lvstrng.argon.utils.ColorUtils;
 import dev.lvstrng.argon.utils.RenderUtils;
 import dev.lvstrng.argon.utils.TextRenderer;
-
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-
 import java.awt.*;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 public abstract class RenderableSetting {
-	public MinecraftClient mc = MinecraftClient.getInstance();
+	public Minecraft mc = Minecraft.getInstance();
 	public ModuleButton parent;
 	public Setting<?> setting;
 	public int offset;
@@ -55,7 +53,7 @@ public abstract class RenderableSetting {
 		return parent.offset;
 	}
 
-	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+	public void render(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
 		updateMouseOver(mouseX, mouseY);
 		this.x = parentX();
 		this.y = parentY() + parentOffset() + offset;
@@ -69,7 +67,7 @@ public abstract class RenderableSetting {
 		this.mouseOver = isHovered(mouseX, mouseY);
 	}
 
-	public void renderDescription(DrawContext context, int mouseX, int mouseY, float delta) {
+	public void renderDescription(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
 		if (isHovered(mouseX, mouseY) && setting.getDescription() != null && !parent.parent.dragging) {
 			CharSequence chars = setting.getDescription();
 

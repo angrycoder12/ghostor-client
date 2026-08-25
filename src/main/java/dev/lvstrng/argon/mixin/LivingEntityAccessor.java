@@ -1,8 +1,8 @@
 package dev.lvstrng.argon.mixin;
 
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
@@ -17,18 +17,18 @@ public interface LivingEntityAccessor {
 	@Accessor("lastDamageSource")
 	void setLastDamageSource(DamageSource source);
 
-	@Accessor("lastDamageTime")
+	@Accessor("lastDamageStamp")
 	long getLastDamageTime();
 
-	@Accessor("lastDamageTime")
+	@Accessor("lastDamageStamp")
 	void setLastDamageTime(long time);
 
-	@Accessor("lastBlockPos")
+	@Accessor("lastPos")
 	BlockPos getLastBlockPos();
 
-	@Accessor("lastBlockPos")
+	@Accessor("lastPos")
 	void setLastBlockPos(BlockPos pos);
 
-	@Accessor("attacking")
+	@Accessor("lastHurtMob")
 	void setAttacking(LivingEntity attacking);
 }

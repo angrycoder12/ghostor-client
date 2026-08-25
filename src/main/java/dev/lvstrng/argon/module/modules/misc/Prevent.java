@@ -9,9 +9,9 @@ import dev.lvstrng.argon.module.setting.BooleanSetting;
 import dev.lvstrng.argon.utils.BlockUtils;
 import dev.lvstrng.argon.utils.EncryptedString;
 import dev.lvstrng.argon.utils.WorldUtils;
-import net.minecraft.block.Blocks;
-import net.minecraft.item.Items;
-import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.BlockHitResult;
 
 
 public final class Prevent extends Module implements ItemUseListener, AttackListener, BlockBreakingListener {
@@ -52,7 +52,7 @@ public final class Prevent extends Module implements ItemUseListener, AttackList
 
 	@Override
 	public void onAttack(AttackEvent event) {
-		if (mc.crosshairTarget instanceof BlockHitResult hit) {
+		if (mc.hitResult instanceof BlockHitResult hit) {
 			if (BlockUtils.isBlock(hit.getBlockPos(), Blocks.OBSIDIAN) && obiPunch.getValue() && mc.player.isHolding(Items.END_CRYSTAL))
 				event.cancel();
 		}
@@ -60,7 +60,7 @@ public final class Prevent extends Module implements ItemUseListener, AttackList
 
 	@Override
 	public void onBlockBreaking(BlockBreakingEvent event) {
-		if (mc.crosshairTarget instanceof BlockHitResult hit) {
+		if (mc.hitResult instanceof BlockHitResult hit) {
 			if (BlockUtils.isBlock(hit.getBlockPos(), Blocks.OBSIDIAN) && obiPunch.getValue() && mc.player.isHolding(Items.END_CRYSTAL))
 				event.cancel();
 		}
@@ -68,7 +68,7 @@ public final class Prevent extends Module implements ItemUseListener, AttackList
 
 	@Override
 	public void onItemUse(ItemUseEvent event) {
-		if (mc.crosshairTarget instanceof BlockHitResult hit) {
+		if (mc.hitResult instanceof BlockHitResult hit) {
 			if (BlockUtils.isAnchorCharged(hit.getBlockPos()) && doubleGlowstone.getValue() && mc.player.isHolding(Items.GLOWSTONE))
 				event.cancel();
 
@@ -79,11 +79,11 @@ public final class Prevent extends Module implements ItemUseListener, AttackList
 				event.cancel();
 
 			if (BlockUtils.isBlock(hit.getBlockPos(), Blocks.ENDER_CHEST) && echestClick.getValue() &&
-					(WorldUtils.isSword(mc.player.getMainHandStack())
-							|| mc.player.getMainHandStack().getItem() == Items.END_CRYSTAL
-							|| mc.player.getMainHandStack().getItem() == Items.OBSIDIAN
-							|| mc.player.getMainHandStack().getItem() == Items.RESPAWN_ANCHOR
-							|| mc.player.getMainHandStack().getItem() == Items.GLOWSTONE))
+					(WorldUtils.isSword(mc.player.getMainHandItem())
+							|| mc.player.getMainHandItem().getItem() == Items.END_CRYSTAL
+							|| mc.player.getMainHandItem().getItem() == Items.OBSIDIAN
+							|| mc.player.getMainHandItem().getItem() == Items.RESPAWN_ANCHOR
+							|| mc.player.getMainHandItem().getItem() == Items.GLOWSTONE))
 				event.cancel();
 		}
 	}

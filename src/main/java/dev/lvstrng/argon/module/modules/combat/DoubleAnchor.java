@@ -6,11 +6,11 @@ import dev.lvstrng.argon.module.Module;
 import dev.lvstrng.argon.module.setting.NumberSetting;
 import dev.lvstrng.argon.utils.BlockUtils;
 import dev.lvstrng.argon.utils.EncryptedString;
-import net.minecraft.item.Items;
-import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
-import net.minecraft.util.Hand;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.phys.BlockHitResult;
 import org.lwjgl.glfw.GLFW;
 
 public final class DoubleAnchor extends Module implements TickListener {
@@ -40,12 +40,12 @@ public final class DoubleAnchor extends Module implements TickListener {
 
 	@Override
 	public void onTick() {
-		if (mc.currentScreen == null) {
+		if (mc.gui.screen() == null) {
 			assert mc.player != null;
-			if (mc.player.getMainHandStack().isOf(Items.RESPAWN_ANCHOR)) {
-				assert mc.world != null;
-				if (mc.crosshairTarget instanceof BlockHitResult h && BlockUtils.isAnchorCharged(h.getBlockPos())) {
-					if (GLFW.glfwGetMouseButton(mc.getWindow().getHandle(), GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS) {
+			if (mc.player.getMainHandItem().is(Items.RESPAWN_ANCHOR)) {
+				assert mc.level != null;
+				if (mc.hitResult instanceof BlockHitResult h && BlockUtils.isAnchorCharged(h.getBlockPos())) {
+					if (GLFW.glfwGetMouseButton(mc.getWindow().handle(), GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS) {
 						if (h.getBlockPos().equals(pos)) {
 							if (count >= 1) return;
 						} else {
@@ -53,7 +53,7 @@ public final class DoubleAnchor extends Module implements TickListener {
 							count = 0;
 						}
 
-						mc.getNetworkHandler().sendPacket(new PlayerInteractBlockC2SPacket(Hand.MAIN_HAND, h, 0));
+						mc.getConnection().send(new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND, h, 0));
 						count++;
 					}
 				}

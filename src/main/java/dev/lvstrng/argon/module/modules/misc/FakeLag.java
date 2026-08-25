@@ -11,22 +11,21 @@ import dev.lvstrng.argon.module.setting.MinMaxSetting;
 import dev.lvstrng.argon.module.setting.NumberSetting;
 import dev.lvstrng.argon.utils.EncryptedString;
 import dev.lvstrng.argon.utils.TimerUtils;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.item.Items;
-import net.minecraft.network.packet.Packet;
-import net.minecraft.network.packet.c2s.play.ClickSlotC2SPacket;
-import net.minecraft.network.packet.c2s.play.HandSwingC2SPacket;
-import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
-import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
-import net.minecraft.network.packet.s2c.play.ExplosionS2CPacket;
-import net.minecraft.util.math.Vec3d;
-
 import java.util.Queue;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientboundExplodePacket;
+import net.minecraft.network.protocol.game.ServerboundContainerClickPacket;
+import net.minecraft.network.protocol.game.ServerboundInteractPacket;
+import net.minecraft.network.protocol.game.ServerboundSwingPacket;
+import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.phys.Vec3;
 
 public final class FakeLag extends Module implements PlayerTickListener, PacketReceiveListener, PacketSendListener {
 	public final Queue<Packet<?>> packetQueue = Queues.newConcurrentLinkedQueue();
 	public boolean bool;
-	public Vec3d pos = Vec3d.ZERO;
+	public Vec3 pos = Vec3.ZERO;
 	public TimerUtils timerUtil = new TimerUtils();
 	private final MinMaxSetting lagDelay = new MinMaxSetting(EncryptedString.of("Lag Delay"), 0, 1000, 1, 100, 200);
 	private final BooleanSetting cancelOnElytra = new BooleanSetting(EncryptedString.of("Cancel on Elytra"), false)
@@ -49,7 +48,7 @@ public final class FakeLag extends Module implements PlayerTickListener, PacketR
 
 		timerUtil.reset();
 		if (mc.player != null)
-			pos = mc.player.getEntityPos();
+			pos = mc.player.position();
 
 		delay = lagDelay.getRandomValueInt();
 		super.onEnable();
@@ -66,28 +65,28 @@ public final class FakeLag extends Module implements PlayerTickListener, PacketR
 
 	@Override
 	public void onPacketReceive(PacketReceiveEvent event) {
-		if (mc.world == null)
+		if (mc.level == null)
 			return;
 
-		if(mc.player.isDead())
+		if(mc.player.isDeadOrDying())
 			return;
 
-		if (event.packet instanceof ExplosionS2CPacket) {
+		if (event.packet instanceof ClientboundExplodePacket) {
 			reset();
 		}
 	}
 
 	@Override
 	public void onPacketSend(PacketSendEvent event) {
-		if (mc.world == null || mc.player.isUsingItem() || mc.player.isDead())
+		if (mc.level == null || mc.player.isUsingItem() || mc.player.isDeadOrDying())
 			return;
 
-		if (event.packet instanceof PlayerInteractEntityC2SPacket || event.packet instanceof HandSwingC2SPacket || event.packet instanceof PlayerInteractBlockC2SPacket || event.packet instanceof ClickSlotC2SPacket) {
+		if (event.packet instanceof ServerboundInteractPacket || event.packet instanceof ServerboundSwingPacket || event.packet instanceof ServerboundUseItemOnPacket || event.packet instanceof ServerboundContainerClickPacket) {
 			reset();
 			return;
 		}
 
-		if (cancelOnElytra.getValue() && mc.player.getEquippedStack(EquipmentSlot.CHEST).getItem() == Items.ELYTRA) {
+		if (cancelOnElytra.getValue() && mc.player.getItemBySlot(EquipmentSlot.CHEST).getItem() == Items.ELYTRA) {
 			reset();
 			return;
 		}
@@ -109,19 +108,19 @@ public final class FakeLag extends Module implements PlayerTickListener, PacketR
 	}
 
 	private void reset() {
-		if (mc.player == null || mc.world == null)
+		if (mc.player == null || mc.level == null)
 			return;
 
 		bool = true;
 
 		synchronized (packetQueue) {
 			while (!packetQueue.isEmpty()) {
-				mc.getNetworkHandler().getConnection().send(packetQueue.poll(), null, false);
+				mc.getConnection().getConnection().send(packetQueue.poll(), null, false);
 			}
 		}
 
 		bool = false;
 		timerUtil.reset();
-		pos = mc.player.getEntityPos();
+		pos = mc.player.position();
 	}
 }

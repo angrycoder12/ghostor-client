@@ -1,15 +1,15 @@
 package dev.lvstrng.argon.font;
 
 import lombok.Getter;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.texture.AbstractTexture;
+import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.resources.Identifier;
+import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.RenderPipelines;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.texture.AbstractTexture;
-import net.minecraft.client.texture.NativeImage;
-import net.minecraft.client.texture.NativeImageBackedTexture;
-import net.minecraft.util.Identifier;
 import org.joml.Matrix3x2fStack;
 import org.lwjgl.BufferUtils;
 
@@ -130,31 +130,31 @@ public final class GlyphPage {
 			data.flip();
 
 			int textureIndex = TEXTURE_COUNTER.incrementAndGet();
-			NativeImageBackedTexture texture = new LinearFontTexture(
+			DynamicTexture texture = new LinearFontTexture(
 					() -> "argon_font_" + textureIndex,
 					NativeImage.read(data)
 			);
 			texture.upload();
 
 			loadedTexture = texture;
-			textureId = Identifier.of("argon", "font/" + textureIndex);
-			MinecraftClient.getInstance().getTextureManager().registerTexture(textureId, loadedTexture);
+			textureId = Identifier.fromNamespaceAndPath("argon", "font/" + textureIndex);
+			Minecraft.getInstance().getTextureManager().register(textureId, loadedTexture);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
-	public float drawChar(DrawContext context, char ch, float x, float y, int color) {
+	public float drawChar(GuiGraphicsExtractor context, char ch, float x, float y, int color) {
 		Glyph glyph = glyphCharacterMap.get(ch);
 
 		if (glyph == null || textureId == null)
 			return 0;
 
-		Matrix3x2fStack matrices = context.getMatrices();
+		Matrix3x2fStack matrices = context.pose();
 		matrices.pushMatrix();
 		matrices.translate(x, y);
 
-		context.drawTexture(
+		context.blit(
 				RenderPipelines.GUI_TEXTURED,
 				textureId,
 				0,
@@ -204,10 +204,10 @@ public final class GlyphPage {
 		}
 	}
 
-	private static final class LinearFontTexture extends NativeImageBackedTexture {
+	private static final class LinearFontTexture extends DynamicTexture {
 		private LinearFontTexture(java.util.function.Supplier<String> label, NativeImage image) {
 			super(label, image);
-			this.sampler = RenderSystem.getSamplerCache().get(FilterMode.LINEAR);
+			this.sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
 		}
 	}
 }

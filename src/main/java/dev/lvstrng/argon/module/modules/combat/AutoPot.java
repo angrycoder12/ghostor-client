@@ -7,10 +7,9 @@ import dev.lvstrng.argon.module.setting.BooleanSetting;
 import dev.lvstrng.argon.module.setting.NumberSetting;
 import dev.lvstrng.argon.utils.EncryptedString;
 import dev.lvstrng.argon.utils.InventoryUtils;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Hand;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.effect.MobEffects;
 
 public final class AutoPot extends Module implements TickListener {
 	private final NumberSetting minHealth = new NumberSetting(EncryptedString.of("Min Health"), 1, 20, 10, 1);
@@ -54,7 +53,7 @@ public final class AutoPot extends Module implements TickListener {
 
 	@Override
 	public void onTick() {
-		if (mc.currentScreen != null)
+		if (mc.gui.screen() != null)
 			return;
 
 		if ((mc.player.getHealth() <= minHealth.getValueFloat() || bool)) {
@@ -64,16 +63,16 @@ public final class AutoPot extends Module implements TickListener {
 				return;
 			}
 
-			if (!InventoryUtils.isThatSplash(StatusEffects.INSTANT_HEALTH.value(), 1, 1, mc.player.getMainHandStack())) {
+			if (!InventoryUtils.isThatSplash(MobEffects.INSTANT_HEALTH.value(), 1, 1, mc.player.getMainHandItem())) {
 				if (switchClock < switchDelay.getValue()) {
 					switchClock++;
 					return;
 				}
 
 				if (goToPrevSlot.getValue() && prevSlot == -1) prevSlot = mc.player.getInventory().getSelectedSlot();
-				if (lookDown.getValue() && prevPitch == -1) prevPitch = mc.player.getPitch();
+				if (lookDown.getValue() && prevPitch == -1) prevPitch = mc.player.getXRot();
 
-				int potSlot = InventoryUtils.findSplash(StatusEffects.INSTANT_HEALTH.value(), 1, 1);
+				int potSlot = InventoryUtils.findSplash(MobEffects.INSTANT_HEALTH.value(), 1, 1);
 
 				if (potSlot != -1) {
 					InventoryUtils.setInvSlot(potSlot);
@@ -82,18 +81,18 @@ public final class AutoPot extends Module implements TickListener {
 				}
 			}
 
-			if (InventoryUtils.isThatSplash(StatusEffects.INSTANT_HEALTH.value(), 1, 1, mc.player.getMainHandStack())) {
+			if (InventoryUtils.isThatSplash(MobEffects.INSTANT_HEALTH.value(), 1, 1, mc.player.getMainHandItem())) {
 				if (throwClock < throwDelay.getValue()) {
 					throwClock++;
 					return;
 				}
 
 				if (lookDown.getValue())
-					mc.player.setPitch(90F);
+					mc.player.setXRot(90F);
 
-				ActionResult actionResult = mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
-				if (actionResult.isAccepted())
-					mc.player.swingHand(Hand.MAIN_HAND);
+				InteractionResult actionResult = mc.gameMode.useItem(mc.player, InteractionHand.MAIN_HAND);
+				if (actionResult.consumesAction())
+					mc.player.swing(InteractionHand.MAIN_HAND);
 
 				throwClock = 0;
 			}
@@ -101,7 +100,7 @@ public final class AutoPot extends Module implements TickListener {
 			InventoryUtils.setInvSlot(prevSlot);
 			prevSlot = -1;
 
-			mc.player.setPitch(prevPitch);
+			mc.player.setXRot(prevPitch);
 			prevPitch = -1;
 		}
 	}

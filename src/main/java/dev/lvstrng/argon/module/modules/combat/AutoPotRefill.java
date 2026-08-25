@@ -8,11 +8,11 @@ import dev.lvstrng.argon.module.setting.ModeSetting;
 import dev.lvstrng.argon.module.setting.NumberSetting;
 import dev.lvstrng.argon.utils.EncryptedString;
 import dev.lvstrng.argon.utils.InventoryUtils;
-import net.minecraft.client.gui.screen.ingame.InventoryScreen;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.screen.slot.Slot;
-import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.inventory.Slot;
 
 public final class AutoPotRefill extends Module implements TickListener {
 	public enum Mode {
@@ -48,18 +48,18 @@ public final class AutoPotRefill extends Module implements TickListener {
 
 	@Override
 	public void onTick() {
-		if (mc.currentScreen instanceof InventoryScreen inventoryScreen) {
+		if (mc.gui.screen() instanceof InventoryScreen inventoryScreen) {
 			if (mode.isMode(Mode.Hover)) {
-				Slot focusedSlot = ((HandledScreenMixin) inventoryScreen).getFocusedSlot();
+				Slot focusedSlot = ((HandledScreenMixin) inventoryScreen).getHoveredSlot();
 
 				if (focusedSlot == null)
 					return;
 
-				PlayerInventory inventory = mc.player.getInventory();
+				Inventory inventory = mc.player.getInventory();
 
 				int emptySlot = -1;
 				for (int i = 0; i <= 8; i++) {
-					if (inventory.getStack(i).isEmpty()) {
+					if (inventory.getItem(i).isEmpty()) {
 						emptySlot = i;
 						break;
 					}
@@ -68,17 +68,17 @@ public final class AutoPotRefill extends Module implements TickListener {
 				if (emptySlot == -1)
 					return;
 
-				if (InventoryUtils.isThatSplash(StatusEffects.INSTANT_HEALTH.value(), 1, 1, focusedSlot.getStack())) {
+				if (InventoryUtils.isThatSplash(MobEffects.INSTANT_HEALTH.value(), 1, 1, focusedSlot.getItem())) {
 					if (clock < delay.getValueInt()) {
 						clock++;
 						return;
 					}
 
-					mc.interactionManager.clickSlot(
-							inventoryScreen.getScreenHandler().syncId,
-							focusedSlot.getIndex(),
+					mc.gameMode.handleContainerInput(
+							inventoryScreen.getMenu().containerId,
+							focusedSlot.getContainerSlot(),
 							emptySlot,
-							SlotActionType.SWAP,
+							ContainerInput.SWAP,
 							mc.player);
 
 					clock = 0;
@@ -86,14 +86,14 @@ public final class AutoPotRefill extends Module implements TickListener {
 			}
 
 			if (mode.isMode(Mode.Auto)) {
-				int slot = InventoryUtils.findPot(StatusEffects.INSTANT_HEALTH.value(), 1, 1);
+				int slot = InventoryUtils.findPot(MobEffects.INSTANT_HEALTH.value(), 1, 1);
 
 				if (slot != -1) {
-					PlayerInventory inventory = mc.player.getInventory();
+					Inventory inventory = mc.player.getInventory();
 
 					int emptySlot = -1;
 					for (int i = 0; i <= 8; i++) {
-						if (inventory.getStack(i).isEmpty()) {
+						if (inventory.getItem(i).isEmpty()) {
 							emptySlot = i;
 							break;
 						}
@@ -106,11 +106,11 @@ public final class AutoPotRefill extends Module implements TickListener {
 						return;
 					}
 
-					mc.interactionManager.clickSlot(
-							inventoryScreen.getScreenHandler().syncId,
+					mc.gameMode.handleContainerInput(
+							inventoryScreen.getMenu().containerId,
 							slot,
 							emptySlot,
-							SlotActionType.SWAP,
+							ContainerInput.SWAP,
 							mc.player);
 
 					clock = 0;

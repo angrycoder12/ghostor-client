@@ -40,9 +40,9 @@ public final class SelfDestruct extends Module {
 
 		Argon.INSTANCE.getProfileManager().saveProfile();
 
-		if (mc.currentScreen instanceof ClickGui) {
+		if (mc.gui.screen() instanceof ClickGui) {
 			Argon.INSTANCE.guiInitialized = false;
-			mc.currentScreen.close();
+			mc.gui.screen().onClose();
 		}
 
 		if (replaceMod.getValue()) {
@@ -78,7 +78,6 @@ public final class SelfDestruct extends Module {
 
 		for (int i = 0; i <= 10; i++) {
 			runtime.gc();
-			runtime.runFinalization();
 
 			try {
 				Thread.sleep(100 * i);

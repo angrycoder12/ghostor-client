@@ -1,37 +1,27 @@
 package dev.lvstrng.argon.utils;
 
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.network.PlayerListEntry;
-import net.minecraft.enchantment.Enchantment;
-import net.minecraft.enchantment.EnchantmentHelper;
-import net.minecraft.enchantment.Enchantments;
-import net.minecraft.entity.DamageUtil;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.*;
-import net.minecraft.util.shape.VoxelShape;
-import net.minecraft.util.shape.VoxelShapes;
-import net.minecraft.world.BlockView;
-import net.minecraft.world.GameMode;
-import net.minecraft.world.Heightmap;
-import net.minecraft.world.RaycastContext;
-import net.minecraft.world.explosion.Explosion;
-import net.minecraft.world.explosion.ExplosionBehavior;
+import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.damagesource.CombatRules;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Explosion;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
@@ -49,33 +39,33 @@ public class DamageUtils {
 	/**
 	 * It is recommended to use this {@link RaycastFactory} unless you implement custom behaviour, as soon:tm: it will be the
 	 * target of optimizations to make it more performant.
-	 * @see BlockView#raycast(RaycastContext)
+	 * @see BlockGetter#clip(ClipContext)
 	 */
 	public static final RaycastFactory HIT_FACTORY = (context, blockPos) -> {
-		BlockState blockState = mc.world.getBlockState(blockPos);
-		if (blockState.getBlock().getBlastResistance() < 600) return null;
+		BlockState blockState = mc.level.getBlockState(blockPos);
+		if (blockState.getBlock().getExplosionResistance() < 600) return null;
 
-		return blockState.getCollisionShape(mc.world, blockPos).raycast(context.start(), context.end(), blockPos);
+		return blockState.getCollisionShape(mc.level, blockPos).clip(context.start(), context.end(), blockPos);
 	};
 
-	public static float crystalDamage(LivingEntity target, Vec3d targetPos, Box targetBox, Vec3d explosionPos, RaycastFactory raycastFactory) {
+	public static float crystalDamage(LivingEntity target, Vec3 targetPos, AABB targetBox, Vec3 explosionPos, RaycastFactory raycastFactory) {
 		return explosionDamage(target, targetPos, targetBox, explosionPos, 12f, raycastFactory);
 	}
 
-	public static float bedDamage(LivingEntity target, Vec3d targetPos, Box targetBox, Vec3d explosionPos, RaycastFactory raycastFactory) {
+	public static float bedDamage(LivingEntity target, Vec3 targetPos, AABB targetBox, Vec3 explosionPos, RaycastFactory raycastFactory) {
 		return explosionDamage(target, targetPos, targetBox, explosionPos, 10f, raycastFactory);
 	}
 
-	public static float anchorDamage(LivingEntity target, Vec3d targetPos, Box targetBox, Vec3d explosionPos, RaycastFactory raycastFactory) {
+	public static float anchorDamage(LivingEntity target, Vec3 targetPos, AABB targetBox, Vec3 explosionPos, RaycastFactory raycastFactory) {
 		return explosionDamage(target, targetPos, targetBox, explosionPos, 10f, raycastFactory);
 	}
 
 	/**
 	 * Low level control of parameters without having to reimplement everything, for addon authors who wish to use their
 	 * own predictions or other systems.
-	 * @see net.minecraft.world.explosion.ExplosionBehavior#calculateDamage(Explosion, Entity)
+	 * @see net.minecraft.world.level.ExplosionDamageCalculator#getEntityDamageAmount(Explosion, Entity)
 	 */
-	public static float explosionDamage(LivingEntity target, Vec3d targetPos, Box targetBox, Vec3d explosionPos, float power, RaycastFactory raycastFactory) {
+	public static float explosionDamage(LivingEntity target, Vec3 targetPos, AABB targetBox, Vec3 explosionPos, float power, RaycastFactory raycastFactory) {
 		double modDistance = distance(targetPos.x, targetPos.y, targetPos.z, explosionPos.x, explosionPos.y, explosionPos.z);
 		if (modDistance > power) return 0f;
 
@@ -83,7 +73,7 @@ public class DamageUtils {
 		double impact = (1 - (modDistance / power)) * exposure;
 		float damage = (int) ((impact * impact + impact) / 2 * 7 * 12 + 1);
 
-		return calculateReductions(damage, target, mc.world.getDamageSources().explosion(null));
+		return calculateReductions(damage, target, mc.level.damageSources().explosion(null));
 	}
 
 	public static double distance(double x1, double y1, double z1, double x2, double y2, double z2) {
@@ -98,8 +88,8 @@ public class DamageUtils {
 		return distanceTo(blockPos.getX(), blockPos.getY(), blockPos.getZ());
 	}
 
-	public static double distanceTo(Vec3d vec3d) {
-		return distanceTo(vec3d.getX(), vec3d.getY(), vec3d.getZ());
+	public static double distanceTo(Vec3 vec3d) {
+		return distanceTo(vec3d.x(), vec3d.y(), vec3d.z());
 	}
 
 	public static double distanceTo(double x, double y, double z) {
@@ -127,44 +117,44 @@ public class DamageUtils {
 
 	/** Meteor Client implementations */
 
-	public static float crystalDamage(LivingEntity target, Vec3d crystal, boolean predictMovement, BlockPos obsidianPos) {
-		return overridingExplosionDamage(target, crystal, 12f, predictMovement, obsidianPos, Blocks.OBSIDIAN.getDefaultState());
+	public static float crystalDamage(LivingEntity target, Vec3 crystal, boolean predictMovement, BlockPos obsidianPos) {
+		return overridingExplosionDamage(target, crystal, 12f, predictMovement, obsidianPos, Blocks.OBSIDIAN.defaultBlockState());
 	}
 
-	public static float crystalDamage(LivingEntity target, Vec3d crystal) {
+	public static float crystalDamage(LivingEntity target, Vec3 crystal) {
 		return explosionDamage(target, crystal, 12f, false);
 	}
 
-	public static float bedDamage(LivingEntity target, Vec3d bed) {
+	public static float bedDamage(LivingEntity target, Vec3 bed) {
 		return explosionDamage(target, bed, 10f, false);
 	}
 
-	public static float anchorDamage(LivingEntity target, Vec3d anchor) {
-		return overridingExplosionDamage(target, anchor, 10f, false, BlockPos.ofFloored(anchor), Blocks.AIR.getDefaultState());
+	public static float anchorDamage(LivingEntity target, Vec3 anchor) {
+		return overridingExplosionDamage(target, anchor, 10f, false, BlockPos.containing(anchor), Blocks.AIR.defaultBlockState());
 	}
 
-	private static float overridingExplosionDamage(LivingEntity target, Vec3d explosionPos, float power, boolean predictMovement, BlockPos overridePos, BlockState overrideState) {
+	private static float overridingExplosionDamage(LivingEntity target, Vec3 explosionPos, float power, boolean predictMovement, BlockPos overridePos, BlockState overrideState) {
 		return explosionDamage(target, explosionPos, power, predictMovement, getOverridingHitFactory(overridePos, overrideState));
 	}
 
-	private static float explosionDamage(LivingEntity target, Vec3d explosionPos, float power, boolean predictMovement) {
+	private static float explosionDamage(LivingEntity target, Vec3 explosionPos, float power, boolean predictMovement) {
 		return explosionDamage(target, explosionPos, power, predictMovement, HIT_FACTORY);
 	}
 
-	public static GameMode getGameMode(PlayerEntity player) {
-		PlayerListEntry playerListEntry = mc.getNetworkHandler().getPlayerListEntry(player.getUuid());
-		if (playerListEntry == null) return GameMode.SPECTATOR;
+	public static GameType getGameMode(Player player) {
+		PlayerInfo playerListEntry = mc.getConnection().getPlayerInfo(player.getUUID());
+		if (playerListEntry == null) return GameType.SPECTATOR;
 		return playerListEntry.getGameMode();
 	}
 
-	private static float explosionDamage(LivingEntity target, Vec3d explosionPos, float power, boolean predictMovement, RaycastFactory raycastFactory) {
+	private static float explosionDamage(LivingEntity target, Vec3 explosionPos, float power, boolean predictMovement, RaycastFactory raycastFactory) {
 		if (target == null) return 0f;
-		if (target instanceof PlayerEntity player && getGameMode(player) == GameMode.CREATIVE) return 0f;
+		if (target instanceof Player player && getGameMode(player) == GameType.CREATIVE) return 0f;
 
-		Vec3d position = predictMovement ? target.getEntityPos().add(target.getVelocity()) : target.getEntityPos();
+		Vec3 position = predictMovement ? target.position().add(target.getDeltaMovement()) : target.position();
 
-		Box box = target.getBoundingBox();
-		if (predictMovement) box = box.offset(target.getVelocity());
+		AABB box = target.getBoundingBox();
+		if (predictMovement) box = box.move(target.getDeltaMovement());
 
 		return explosionDamage(target, position, box, explosionPos, power, raycastFactory);
 	}
@@ -174,35 +164,35 @@ public class DamageUtils {
 			BlockState blockState;
 			if (blockPos.equals(overridePos)) blockState = overrideState;
 			else {
-				blockState = mc.world.getBlockState(blockPos);
-				if (blockState.getBlock().getBlastResistance() < 600) return null;
+				blockState = mc.level.getBlockState(blockPos);
+				if (blockState.getBlock().getExplosionResistance() < 600) return null;
 			}
 
-			return blockState.getCollisionShape(mc.world, blockPos).raycast(context.start(), context.end(), blockPos);
+			return blockState.getCollisionShape(mc.level, blockPos).clip(context.start(), context.end(), blockPos);
 		};
 	}
 
 	// Sword damage
 
 	/**
-	 * @see PlayerEntity#attack(Entity)
+	 * @see Player#attack(Entity)
 	 */
 	public static float getAttackDamage(LivingEntity attacker, LivingEntity target) {
-		float itemDamage = (float) attacker.getAttributeValue(EntityAttributes.ATTACK_DAMAGE);
-		DamageSource damageSource = attacker instanceof PlayerEntity player ? mc.world.getDamageSources().playerAttack(player) : mc.world.getDamageSources().mobAttack(attacker);
+		float itemDamage = (float) attacker.getAttributeValue(Attributes.ATTACK_DAMAGE);
+		DamageSource damageSource = attacker instanceof Player player ? mc.level.damageSources().playerAttack(player) : mc.level.damageSources().mobAttack(attacker);
 
 		// Get enchant damage
-		ItemStack stack = attacker.getWeaponStack();
+		ItemStack stack = attacker.getWeaponItem();
 		float enchantDamage = /*fixme EnchantmentHelper.getDamage(attacker.getWorld() instanceof ServerWorld serverWorld ? serverWorld : null, stack, target, damageSource, itemDamage) - itemDamage*/ 0;
 
 		// Factor charge
-		if (attacker instanceof PlayerEntity playerEntity) {
-			float charge = playerEntity.getAttackCooldownProgress(0.5f);
+		if (attacker instanceof Player playerEntity) {
+			float charge = playerEntity.getAttackStrengthScale(0.5f);
 			itemDamage *= 0.2f + charge * charge * 0.8f;
 			enchantDamage *= charge;
 
 			// Factor critical hit
-			if (charge > 0.9f && attacker.fallDistance > 0f && !attacker.isOnGround() && !attacker.isClimbing() && !attacker.isTouchingWater() && !attacker.hasStatusEffect(StatusEffects.BLINDNESS) && !attacker.hasVehicle()) {
+			if (charge > 0.9f && attacker.fallDistance > 0f && !attacker.onGround() && !attacker.onClimbable() && !attacker.isInWater() && !attacker.hasEffect(MobEffects.BLINDNESS) && !attacker.isPassenger()) {
 				itemDamage *= 1.5f;
 			}
 		}
@@ -216,15 +206,15 @@ public class DamageUtils {
 
 	// Fall Damage
 	public static float fallDamage(LivingEntity entity) {
-		if (entity instanceof PlayerEntity player && player.getAbilities().flying) return 0f;
-		if (entity.hasStatusEffect(StatusEffects.SLOW_FALLING) || entity.hasStatusEffect(StatusEffects.LEVITATION)) return 0f;
+		if (entity instanceof Player player && player.getAbilities().flying) return 0f;
+		if (entity.hasEffect(MobEffects.SLOW_FALLING) || entity.hasEffect(MobEffects.LEVITATION)) return 0f;
 
 		// Fast path - Above the surface
-		int surface = mc.world.getWorldChunk(entity.getBlockPos()).getHeightmap(Heightmap.Type.MOTION_BLOCKING).get(entity.getBlockX() & 15, entity.getBlockZ() & 15);
+		int surface = mc.level.getChunkAt(entity.blockPosition()).getOrCreateHeightmapUnprimed(Heightmap.Types.MOTION_BLOCKING).getFirstAvailable(entity.getBlockX() & 15, entity.getBlockZ() & 15);
 		if (entity.getBlockY() >= surface) return fallDamageReductions(entity, surface);
 
 		// Under the surface
-		BlockHitResult raycastResult = mc.world.raycast(new RaycastContext(entity.getEntityPos(), new Vec3d(entity.getX(), mc.world.getBottomY(), entity.getZ()), RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.WATER, entity));
+		BlockHitResult raycastResult = mc.level.clip(new ClipContext(entity.position(), new Vec3(entity.getX(), mc.level.getMinY(), entity.getZ()), ClipContext.Block.COLLIDER, ClipContext.Fluid.WATER, entity));
 		if (raycastResult.getType() == HitResult.Type.MISS) return 0;
 
 		return fallDamageReductions(entity, raycastResult.getBlockPos().getY());
@@ -232,23 +222,23 @@ public class DamageUtils {
 
 	private static float fallDamageReductions(LivingEntity entity, int surface) {
 		int fallHeight = (int) (entity.getY() - surface + entity.fallDistance - 3d);
-		@Nullable StatusEffectInstance jumpBoostInstance = entity.getStatusEffect(StatusEffects.JUMP_BOOST);
+		@Nullable MobEffectInstance jumpBoostInstance = entity.getEffect(MobEffects.JUMP_BOOST);
 		if (jumpBoostInstance != null) fallHeight -= jumpBoostInstance.getAmplifier() + 1;
 
-		return calculateReductions(fallHeight, entity, mc.world.getDamageSources().fall());
+		return calculateReductions(fallHeight, entity, mc.level.damageSources().fall());
 	}
 
 	// Utils
 	public static float calculateReductions(float damage, LivingEntity entity, DamageSource damageSource) {
-		if (damageSource.isScaledWithDifficulty()) {
-			switch (mc.world.getDifficulty()) {
+		if (damageSource.scalesWithDifficulty()) {
+			switch (mc.level.getDifficulty()) {
 				case EASY     -> damage = Math.min(damage / 2 + 1, damage);
 				case HARD     -> damage *= 1.5f;
 			}
 		}
 
 		// Armor reduction
-		damage = DamageUtil.getDamageLeft(entity, damage, damageSource, getArmor(entity), (float) entity.getAttributeValue(EntityAttributes.ARMOR_TOUGHNESS));
+		damage = CombatRules.getDamageAfterAbsorb(entity, damage, damageSource, getArmor(entity), (float) entity.getAttributeValue(Attributes.ARMOR_TOUGHNESS));
 
 		// Resistance reduction
 		damage = resistanceReduction(entity, damage);
@@ -260,18 +250,18 @@ public class DamageUtils {
 	}
 
 	private static float getArmor(LivingEntity entity) {
-		return (float) Math.floor(entity.getAttributeValue(EntityAttributes.ARMOR));
+		return (float) Math.floor(entity.getAttributeValue(Attributes.ARMOR));
 	}
 
 
 	private static float protectionReduction(LivingEntity player, float damage, DamageSource source) {
 		//fixme float protLevel = EnchantmentHelper.getProtectionAmount(player.getWorld() instanceof ServerWorld serverWorld ? serverWorld : null, player, source);
-		return DamageUtil.getInflictedDamage(damage, /*protLevel*/ 0);
+		return CombatRules.getDamageAfterMagicAbsorb(damage, /*protLevel*/ 0);
 	}
 
 
 	private static float resistanceReduction(LivingEntity player, float damage) {
-		StatusEffectInstance resistance = player.getStatusEffect(StatusEffects.RESISTANCE);
+		MobEffectInstance resistance = player.getEffect(MobEffects.RESISTANCE);
 		if (resistance != null) {
 			int lvl = resistance.getAmplifier() + 1;
 			damage *= (1 - (lvl * 0.2f));
@@ -283,7 +273,7 @@ public class DamageUtils {
 	/**
 	 * @see Explosion#getExposure(Vec3d, Entity)
 	 */
-	private static float getExposure(Vec3d source, Box box, RaycastFactory raycastFactory) {
+	private static float getExposure(Vec3 source, AABB box, RaycastFactory raycastFactory) {
 		double xDiff = box.maxX - box.minX;
 		double yDiff = box.maxY - box.minY;
 		double zDiff = box.maxZ - box.minZ;
@@ -313,7 +303,7 @@ public class DamageUtils {
 			for (double x = startX; x <= endX; x += xStep) {
 				for (double y = startY; y <= endY; y += yStep) {
 					for (double z = startZ; z <= endZ; z += zStep) {
-						Vec3d position = new Vec3d(x, y, z);
+						Vec3 position = new Vec3(x, y, z);
 
 						if (raycast(new ExposureRaycastContext(position, source), raycastFactory) == null) misses++;
 
@@ -331,10 +321,10 @@ public class DamageUtils {
 	/* Raycasts */
 
 	private static BlockHitResult raycast(ExposureRaycastContext context, RaycastFactory raycastFactory) {
-		return BlockView.raycast(context.start, context.end, context, raycastFactory, ctx -> null);
+		return BlockGetter.traverseBlocks(context.start, context.end, context, raycastFactory, ctx -> null);
 	}
 
-	public record ExposureRaycastContext(Vec3d start, Vec3d end) {}
+	public record ExposureRaycastContext(Vec3 start, Vec3 end) {}
 
 	@FunctionalInterface
 	public interface RaycastFactory extends BiFunction<ExposureRaycastContext, BlockPos, BlockHitResult> {}

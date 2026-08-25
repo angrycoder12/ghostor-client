@@ -1,9 +1,8 @@
 package dev.lvstrng.argon.event.events;
 
+import com.mojang.blaze3d.platform.Window;
 import dev.lvstrng.argon.event.Event;
 import dev.lvstrng.argon.event.Listener;
-import net.minecraft.client.util.Window;
-
 import java.util.ArrayList;
 
 public interface ResolutionListener extends Listener {

@@ -1,60 +1,58 @@
 package dev.lvstrng.argon.utils;
 
 import dev.lvstrng.argon.utils.rotation.Rotation;
-import net.minecraft.block.Block;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.RespawnAnchorBlock;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.ItemEntity;
-import net.minecraft.util.Hand;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
-
 import java.util.List;
 import java.util.stream.Stream;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.RespawnAnchorBlock;
+import net.minecraft.world.phys.AABB;
 
 import static dev.lvstrng.argon.Argon.mc;
 
 
 public final class BlockUtils {
 	public static boolean isBlock(BlockPos pos, Block block) {
-		return mc.world.getBlockState(pos).getBlock() == block;
+		return mc.level.getBlockState(pos).getBlock() == block;
 	}
 
 	public static void rotateToBlock(BlockPos pos) {
         assert mc.player != null; //WTF!!!
-        Rotation rotation = RotationUtils.getDirection(mc.player, pos.toCenterPos());
+        Rotation rotation = RotationUtils.getDirection(mc.player, net.minecraft.world.phys.Vec3.atCenterOf(pos));
 
-		mc.player.setPitch((float) rotation.pitch());
-		mc.player.setYaw((float) rotation.yaw());
+		mc.player.setXRot((float) rotation.pitch());
+		mc.player.setYRot((float) rotation.yaw());
 	}
 
 	public static boolean isAnchorCharged(BlockPos pos) {
 		if (isBlock(pos, Blocks.RESPAWN_ANCHOR)) {
-			return mc.world.getBlockState(pos).get(RespawnAnchorBlock.CHARGES) != 0;
+			return mc.level.getBlockState(pos).getValue(RespawnAnchorBlock.CHARGE) != 0;
 		}
 		return false;
 	}
 
 	public static boolean isAnchorNotCharged(BlockPos pos) {
 		if (isBlock(pos, Blocks.RESPAWN_ANCHOR)) {
-			return mc.world.getBlockState(pos).get(RespawnAnchorBlock.CHARGES) == 0;
+			return mc.level.getBlockState(pos).getValue(RespawnAnchorBlock.CHARGE) == 0;
 		}
 
 		return false;
 	}
 
 	public static boolean canPlaceBlockClient(BlockPos block) {
-		BlockPos up = block.up();
+		BlockPos up = block.above();
 
-		if(!mc.world.isAir(up))
+		if(!mc.level.isEmptyBlock(up))
 			return false;
 
 		double x = up.getX();
 		double y = up.getY();
 		double z = up.getZ();
 
-		List<Entity> list = mc.world.getOtherEntities(null, new Box(x, y, z, x + 1, y + 1, z + 1));
+		List<Entity> list = mc.level.getEntities(null, new AABB(x, y, z, x + 1, y + 1, z + 1));
 		list.removeIf(entity -> entity instanceof ItemEntity);
 
 		return list.isEmpty();

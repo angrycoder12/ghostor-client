@@ -6,12 +6,11 @@ import dev.lvstrng.argon.managers.FriendManager;
 import dev.lvstrng.argon.module.ModuleManager;
 import dev.lvstrng.argon.managers.ProfileManager;
 import dev.lvstrng.argon.utils.rotation.RotatorManager;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.Screen;
-
 import java.io.File;
 import java.io.IOException;
 import java.net.*;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 
 @SuppressWarnings("all")
 public final class Argon {
@@ -20,7 +19,7 @@ public final class Argon {
 	public ModuleManager moduleManager;
 	public EventManager eventManager;
 	public FriendManager friendManager;
-	public static MinecraftClient mc;
+	public static Minecraft mc;
 	public String version = " v1.0";
 	public static boolean BETA; //this was for beta kids but ablue never made it a reality, and you basically paid extra 10 bucks for nothing while ablue spent it all on war thunder to buy pre-historic tanks and estrogen 🤡🤡🤡
 	public static Argon INSTANCE;
@@ -43,7 +42,7 @@ public final class Argon {
 		this.setLastModified();
 
 		this.guiInitialized = false;
-		mc = MinecraftClient.getInstance();
+		mc = Minecraft.getInstance();
 	}
 
 	public ProfileManager getProfileManager() {

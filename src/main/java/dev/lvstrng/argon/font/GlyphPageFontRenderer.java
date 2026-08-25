@@ -1,11 +1,11 @@
 package dev.lvstrng.argon.font;
 
 import dev.lvstrng.argon.utils.EncryptedString;
-import net.minecraft.client.gui.DrawContext;
 import org.joml.Matrix3x2fStack;
 
 import java.awt.*;
 import java.util.Random;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
  * @author superblaubeere27
@@ -188,35 +188,35 @@ public final class GlyphPageFontRenderer {
 		return new GlyphPageFontRenderer(regularPage, boldPage, italicPage, boldItalicPage);
 	}
 
-	public int drawStringWithShadow(DrawContext context, CharSequence text, float x, float y, int color) {
+	public int drawStringWithShadow(GuiGraphicsExtractor context, CharSequence text, float x, float y, int color) {
 		return drawString(context, text, x, y, color, true);
 	}
 
-	public int drawStringWithShadow(DrawContext context, CharSequence text, double x, double y, int color) {
+	public int drawStringWithShadow(GuiGraphicsExtractor context, CharSequence text, double x, double y, int color) {
 		return drawString(context, text, (float) x, (float) y, color, true);
 	}
 
-	public int drawString(DrawContext context, CharSequence text, float x, float y, int color) {
+	public int drawString(GuiGraphicsExtractor context, CharSequence text, float x, float y, int color) {
 		return drawString(context, text, x, y, color, false);
 	}
 
-	public int drawString(DrawContext context, CharSequence text, double x, double y, int color) {
+	public int drawString(GuiGraphicsExtractor context, CharSequence text, double x, double y, int color) {
 		return drawString(context, text, (float) x, (float) y, color, false);
 	}
 
-	public int drawCenteredString(DrawContext context, CharSequence text, double x, double y, float scale, int color) {
+	public int drawCenteredString(GuiGraphicsExtractor context, CharSequence text, double x, double y, float scale, int color) {
 		return drawString(context, text, (float) x - getStringWidth(text) / 2, (float) y, scale, color, false);
 	}
 
-	public int drawCenteredString(DrawContext context, CharSequence text, double x, double y, int color) {
+	public int drawCenteredString(GuiGraphicsExtractor context, CharSequence text, double x, double y, int color) {
 		return drawString(context, text, (float) x - getStringWidth(text) / 2, (float) y, color, false);
 	}
 
-	public int drawCenteredStringWidthShadow(DrawContext context, CharSequence text, double x, double y, int color) {
+	public int drawCenteredStringWidthShadow(GuiGraphicsExtractor context, CharSequence text, double x, double y, int color) {
 		return drawString(context, text, (float) x - getStringWidth(text) / 2, (float) y, color, true);
 	}
 
-	public int drawString(DrawContext context, CharSequence text, float x, float y, float scale, int color, boolean dropShadow) {
+	public int drawString(GuiGraphicsExtractor context, CharSequence text, float x, float y, float scale, int color, boolean dropShadow) {
 		this.resetStyles();
 		int i;
 
@@ -233,7 +233,7 @@ public final class GlyphPageFontRenderer {
 	/**
 	 * Draws the specified string.
 	 */
-	public int drawString(DrawContext context, CharSequence text, float x, float y, int color, boolean dropShadow) {
+	public int drawString(GuiGraphicsExtractor context, CharSequence text, float x, float y, int color, boolean dropShadow) {
 		this.resetStyles();
 		int i;
 
@@ -251,7 +251,7 @@ public final class GlyphPageFontRenderer {
 	 * Render single line string by setting color, current (posX,posY), and
 	 * calling renderStringAtPos()
 	 */
-	private int renderString(DrawContext context, CharSequence text, float x, float y, int color, boolean dropShadow) {
+	private int renderString(GuiGraphicsExtractor context, CharSequence text, float x, float y, int color, boolean dropShadow) {
 		if (text == null) {
 			return 0;
 		} else {
@@ -270,7 +270,7 @@ public final class GlyphPageFontRenderer {
 		}
 	}
 
-	private int renderString(DrawContext context, CharSequence text, float x, float y, float scale, int color, boolean dropShadow) {
+	private int renderString(GuiGraphicsExtractor context, CharSequence text, float x, float y, float scale, int color, boolean dropShadow) {
 		if (text == null) {
 			return 0;
 		} else {
@@ -292,14 +292,14 @@ public final class GlyphPageFontRenderer {
 	/**
 	 * Render a single line string at the current (posX,posY) and update posX
 	 */
-	private void renderStringAtPos(DrawContext context, CharSequence text, boolean shadow, int color) {
+	private void renderStringAtPos(GuiGraphicsExtractor context, CharSequence text, boolean shadow, int color) {
 		GlyphPage glyphPage = getCurrentGlyphPage();
 		float alpha = (float) (color >> 24 & 255) / 255.0F;
 		float red = (float) (color >> 16 & 255) / 255.0F;
 		float green = (float) (color >> 8 & 255) / 255.0F;
 		float blue = (float) (color & 255) / 255.0F;
 
-		Matrix3x2fStack matrices = context.getMatrices();
+		Matrix3x2fStack matrices = context.pose();
 		matrices.pushMatrix();
 		matrices.scale(0.5F, 0.5F);
 
@@ -358,14 +358,14 @@ public final class GlyphPageFontRenderer {
 		matrices.popMatrix();
 	}
 
-	private void renderStringAtPos(DrawContext context, CharSequence text, float scale, boolean shadow, int color) {
+	private void renderStringAtPos(GuiGraphicsExtractor context, CharSequence text, float scale, boolean shadow, int color) {
 		GlyphPage glyphPage = getCurrentGlyphPage();
 		float alpha = (float) (color >> 24 & 255) / 255.0F;
 		float red = (float) (color >> 16 & 255) / 255.0F;
 		float green = (float) (color >> 8 & 255) / 255.0F;
 		float blue = (float) (color & 255) / 255.0F;
 
-		Matrix3x2fStack matrices = context.getMatrices();
+		Matrix3x2fStack matrices = context.pose();
 		matrices.pushMatrix();
 		matrices.scale(scale, scale);
 
@@ -424,7 +424,7 @@ public final class GlyphPageFontRenderer {
 		matrices.popMatrix();
 	}
 
-	private void doDraw(DrawContext context, float f, GlyphPage glyphPage, int color) {
+	private void doDraw(GuiGraphicsExtractor context, float f, GlyphPage glyphPage, int color) {
 		if (this.strikethroughStyle) {
 			drawLine(context, this.posX, this.posX + f, this.posY + (glyphPage.getMaxFontHeight() / 2.0F), color);
 		}
@@ -436,7 +436,7 @@ public final class GlyphPageFontRenderer {
 		this.posX += f;
 	}
 
-	private void drawLine(DrawContext context, float startX, float endX, float y, int color) {
+	private void drawLine(GuiGraphicsExtractor context, float startX, float endX, float y, int color) {
 		int left = Math.round(Math.min(startX, endX));
 		int right = Math.max(left + 1, Math.round(Math.max(startX, endX)));
 		int top = Math.round(y - 1.0F);

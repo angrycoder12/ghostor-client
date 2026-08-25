@@ -11,11 +11,11 @@ import dev.lvstrng.argon.utils.EncryptedString;
 import dev.lvstrng.argon.utils.InventoryUtils;
 import dev.lvstrng.argon.utils.MouseSimulation;
 import dev.lvstrng.argon.utils.WorldUtils;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.AxeItem;
-import net.minecraft.item.Items;
-import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.AxeItem;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.phys.EntityHitResult;
 import org.lwjgl.glfw.GLFW;
 
 public final class ShieldDisabler extends Module implements TickListener, AttackListener {
@@ -57,19 +57,19 @@ public final class ShieldDisabler extends Module implements TickListener, Attack
 
 	@Override
 	public void onTick() {
-		if (mc.currentScreen != null)
+		if (mc.gui.screen() != null)
 			return;
 
-		if(requireHoldAxe.getValue() && !(mc.player.getMainHandStack().getItem() instanceof AxeItem))
+		if(requireHoldAxe.getValue() && !(mc.player.getMainHandItem().getItem() instanceof AxeItem))
 			return;
 
-		if (mc.crosshairTarget instanceof EntityHitResult entityHit) {
+		if (mc.hitResult instanceof EntityHitResult entityHit) {
 			Entity entity = entityHit.getEntity();
 
 			if (mc.player.isUsingItem())
 				return;
 
-			if (entity instanceof PlayerEntity player) {
+			if (entity instanceof Player player) {
 				if (WorldUtils.isShieldFacingAway(player))
 					return;
 
@@ -114,7 +114,7 @@ public final class ShieldDisabler extends Module implements TickListener, Attack
 
 	@Override
 	public void onAttack(AttackListener.AttackEvent event) {
-		if (GLFW.glfwGetMouseButton(mc.getWindow().getHandle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS)
+		if (GLFW.glfwGetMouseButton(mc.getWindow().handle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS)
 			event.cancel();
 	}
 }

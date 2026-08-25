@@ -10,11 +10,11 @@ import dev.lvstrng.argon.utils.EncryptedString;
 import dev.lvstrng.argon.utils.FakeInvScreen;
 import dev.lvstrng.argon.utils.InventoryUtils;
 import dev.lvstrng.argon.utils.TimerUtils;
-import net.minecraft.client.gui.screen.ingame.InventoryScreen;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 
 public final class AutoInventoryTotem extends Module implements TickListener {
@@ -66,9 +66,9 @@ public final class AutoInventoryTotem extends Module implements TickListener {
 	@Override
 	public void onTick() {
 		if (shouldOpenScreen() && autoOpen.getValue())
-			mc.setScreen(new FakeInvScreen(mc.player));
+			mc.gui.setScreen(new FakeInvScreen(mc.player));
 
-		if (!(mc.currentScreen instanceof InventoryScreen || mc.currentScreen instanceof FakeInvScreen)) {
+		if (!(mc.gui.screen() instanceof InventoryScreen || mc.gui.screen() instanceof FakeInvScreen)) {
 			clock = -1;
 			closeClock = -1;
 			return;
@@ -83,28 +83,28 @@ public final class AutoInventoryTotem extends Module implements TickListener {
 		if (clock > 0)
 			clock--;
 
-		PlayerInventory inventory = mc.player.getInventory();
+		Inventory inventory = mc.player.getInventory();
 
 		if (autoSwitch.getValue())
 			inventory.setSelectedSlot(totemSlot.getValueInt() - 1);
 
 		if (clock <= 0) {
-			if (mc.player.getOffHandStack().getItem() != Items.TOTEM_OF_UNDYING) {
+			if (mc.player.getOffhandItem().getItem() != Items.TOTEM_OF_UNDYING) {
 				int slot = mode.isMode(Mode.Blatant) ? InventoryUtils.findTotemSlot() : InventoryUtils.findRandomTotemSlot();
 
 				if (slot != -1) {
-					mc.interactionManager.clickSlot(((InventoryScreen) mc.currentScreen).getScreenHandler().syncId, slot, 40, SlotActionType.SWAP, mc.player);
+					mc.gameMode.handleContainerInput(((InventoryScreen) mc.gui.screen()).getMenu().containerId, slot, 40, ContainerInput.SWAP, mc.player);
 					return;
 				}
 			}
 
 			if(hotbar.getValue()) {
-				ItemStack mainHand = mc.player.getMainHandStack();
+				ItemStack mainHand = mc.player.getMainHandItem();
 				if (mainHand.isEmpty() || forceTotem.getValue() && mainHand.getItem() != Items.TOTEM_OF_UNDYING) {
 					int slot = mode.isMode(Mode.Blatant) ? InventoryUtils.findTotemSlot() : InventoryUtils.findRandomTotemSlot();
 
 					if (slot != -1) {
-						mc.interactionManager.clickSlot(((InventoryScreen) mc.currentScreen).getScreenHandler().syncId, slot, inventory.getSelectedSlot(), SlotActionType.SWAP, mc.player);
+						mc.gameMode.handleContainerInput(((InventoryScreen) mc.gui.screen()).getMenu().containerId, slot, inventory.getSelectedSlot(), ContainerInput.SWAP, mc.player);
 						return;
 					}
 				}
@@ -117,7 +117,7 @@ public final class AutoInventoryTotem extends Module implements TickListener {
 					return;
 				}
 
-				mc.currentScreen.close();
+				mc.gui.screen().onClose();
 				closeClock = stayOpenFor.getValueInt();
 			}
 		}
@@ -125,14 +125,14 @@ public final class AutoInventoryTotem extends Module implements TickListener {
 
 	public boolean shouldCloseScreen() {
 		if(hotbar.getValue())
-			return (mc.player.getInventory().getStack(totemSlot.getValueInt() - 1).getItem() == Items.TOTEM_OF_UNDYING && mc.player.getOffHandStack().getItem() == Items.TOTEM_OF_UNDYING) && mc.currentScreen instanceof FakeInvScreen;
-		else return ( mc.player.getOffHandStack().getItem() == Items.TOTEM_OF_UNDYING) && mc.currentScreen instanceof FakeInvScreen;
+			return (mc.player.getInventory().getItem(totemSlot.getValueInt() - 1).getItem() == Items.TOTEM_OF_UNDYING && mc.player.getOffhandItem().getItem() == Items.TOTEM_OF_UNDYING) && mc.gui.screen() instanceof FakeInvScreen;
+		else return ( mc.player.getOffhandItem().getItem() == Items.TOTEM_OF_UNDYING) && mc.gui.screen() instanceof FakeInvScreen;
 	}
 
 	public boolean shouldOpenScreen() {
 		if(hotbar.getValue())
-			return (mc.player.getOffHandStack().getItem() != Items.TOTEM_OF_UNDYING || mc.player.getInventory().getStack(totemSlot.getValueInt() - 1).getItem() != Items.TOTEM_OF_UNDYING)
-					&& !(mc.currentScreen instanceof FakeInvScreen) && InventoryUtils.countItemExceptHotbar(item -> item == Items.TOTEM_OF_UNDYING) != 0;
-		else return (mc.player.getOffHandStack().getItem() != Items.TOTEM_OF_UNDYING && !(mc.currentScreen instanceof FakeInvScreen) && InventoryUtils.countItemExceptHotbar(item -> item == Items.TOTEM_OF_UNDYING) != 0);
+			return (mc.player.getOffhandItem().getItem() != Items.TOTEM_OF_UNDYING || mc.player.getInventory().getItem(totemSlot.getValueInt() - 1).getItem() != Items.TOTEM_OF_UNDYING)
+					&& !(mc.gui.screen() instanceof FakeInvScreen) && InventoryUtils.countItemExceptHotbar(item -> item == Items.TOTEM_OF_UNDYING) != 0;
+		else return (mc.player.getOffhandItem().getItem() != Items.TOTEM_OF_UNDYING && !(mc.gui.screen() instanceof FakeInvScreen) && InventoryUtils.countItemExceptHotbar(item -> item == Items.TOTEM_OF_UNDYING) != 0);
 	}
 }

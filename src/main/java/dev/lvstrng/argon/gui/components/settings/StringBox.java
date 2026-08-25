@@ -7,15 +7,15 @@ import dev.lvstrng.argon.module.modules.client.ClickGUI;
 import dev.lvstrng.argon.module.setting.Setting;
 import dev.lvstrng.argon.module.setting.StringSetting;
 import dev.lvstrng.argon.utils.*;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.input.CharInput;
-import net.minecraft.client.input.KeyInput;
-import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
 import java.awt.*;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.network.chat.Component;
 
 public final class StringBox extends RenderableSetting {
     private final StringSetting setting;
@@ -27,7 +27,7 @@ public final class StringBox extends RenderableSetting {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
 
 		TextRenderer.drawString(setting.getName(), context, parentX() + 20 ,(parentY() + parentOffset() + offset) + 9, GhostorTheme.TEXT.getRGB());
@@ -53,15 +53,16 @@ public final class StringBox extends RenderableSetting {
     @Override
     public void mouseClicked(double mouseX, double mouseY, int button) {
         if(isHovered(mouseX, mouseY) && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
-            mc.setScreen(new Screen(Text.empty()) {
+            Argon.INSTANCE.clickGui.suspendForChildScreen();
+            mc.gui.setScreen(new Screen(Component.empty()) {
                 private String content = setting.getValue();
 
                 @Override
-                public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+                public void extractRenderState(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
                     RenderUtils.unscaledProjection(context);
-                    mouseX *= (int) MinecraftClient.getInstance().getWindow().getScaleFactor();
-                    mouseY *= (int) MinecraftClient.getInstance().getWindow().getScaleFactor();
-                    super.render(context, mouseX, mouseY, delta);
+                    mouseX *= (int) Minecraft.getInstance().getWindow().getGuiScale();
+                    mouseY *= (int) Minecraft.getInstance().getWindow().getGuiScale();
+                    super.extractRenderState(context, mouseX, mouseY, delta);
 
                     context.fill(0, 0, mc.getWindow().getWidth(), mc.getWindow().getHeight(), new Color(0, 0, 0, ClickGUI.background.getValue() ? 200 : 0).getRGB());
 
@@ -86,23 +87,30 @@ public final class StringBox extends RenderableSetting {
                 }
 
                 @Override
-                public boolean keyPressed(KeyInput keyInput) {
+                public boolean keyPressed(KeyEvent keyInput) {
                     int keyCode = keyInput.key();
                     int modifiers = keyInput.modifiers();
 
                     if(keyCode == GLFW.GLFW_KEY_ESCAPE) {
                         setting.setValue(content.strip());
-                        mc.setScreen(Argon.INSTANCE.clickGui);
+                        if (ClientState.hasActiveWorld()) {
+                            Argon.INSTANCE.clickGui.resumeFromChildScreen();
+                            mc.gui.setScreen(Argon.INSTANCE.clickGui);
+                        } else {
+                            Argon.INSTANCE.clickGui.resumeFromChildScreen();
+                            Argon.INSTANCE.getModuleManager().getModule(ClickGUI.class).setEnabledStatus(false);
+                            mc.gui.setScreen(null);
+                        }
                         return true;
                     }
 
                     if(isPasteShortcut(keyInput)) {
-                        content += mc.keyboard.getClipboard();
+                        content += mc.keyboardHandler.getClipboard();
                         return true;
                     }
 
                     if(isCopyShortcut(keyInput)) {
-                        mc.keyboard.setClipboard(content);
+                        mc.keyboardHandler.setClipboard(content);
                         return true;
                     }
 
@@ -116,16 +124,17 @@ public final class StringBox extends RenderableSetting {
                     return super.keyPressed(keyInput);
                 }
 
-                public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
+                @Override
+                public void extractBackground(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
                 }
 
                 @Override
-                public boolean charTyped(CharInput charInput) {
-                    if (!charInput.isValidChar()) {
+                public boolean charTyped(CharacterEvent charInput) {
+                    if (!charInput.isAllowedChatCharacter()) {
                         return super.charTyped(charInput);
                     }
 
-                    content += charInput.asString();
+                    content += charInput.codepointAsString();
                     return true;
                 }
 
@@ -134,11 +143,11 @@ public final class StringBox extends RenderableSetting {
                     return false;
                 }
 
-                private boolean isCopyShortcut(KeyInput keyInput) {
+                private boolean isCopyShortcut(KeyEvent keyInput) {
                     return keyInput.key() == GLFW.GLFW_KEY_C && (keyInput.modifiers() & GLFW.GLFW_MOD_CONTROL) != 0;
                 }
 
-                private boolean isPasteShortcut(KeyInput keyInput) {
+                private boolean isPasteShortcut(KeyEvent keyInput) {
                     return keyInput.key() == GLFW.GLFW_KEY_V && (keyInput.modifiers() & GLFW.GLFW_MOD_CONTROL) != 0;
                 }
             });

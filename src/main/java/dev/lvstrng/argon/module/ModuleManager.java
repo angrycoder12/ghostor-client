@@ -22,6 +22,9 @@ public final class ModuleManager implements ButtonListener {
 	public ModuleManager() {
 		addModules();
 		addKeybinds();
+		// Append this stateless GUI action after the legacy module keybind so old
+		// Friends profile setting indexes remain unchanged.
+		getModule(Friends.class).addManagerAction();
 	}
 
 	public void addModules() {
@@ -68,6 +71,20 @@ public final class ModuleManager implements ButtonListener {
 		add(new ClickGUI());
 		add(new Friends());
 		add(new SelfDestruct());
+
+		// Keep new modules at the end because legacy profiles use list indexes.
+		add(new NoFall());
+		add(new Reach());
+		add(new ChestStealer());
+		add(new SafeWalk());
+		add(new Nametags());
+		add(new MapTooltip());
+		add(new ShulkerBoxTooltip());
+		add(new Fullbright());
+		add(new AntiAFK());
+		add(new Scaffold());
+		add(new Clutch());
+		add(new AutoTool());
 	}
 
 	public List<Module> getEnabledModules() {
@@ -108,11 +125,24 @@ public final class ModuleManager implements ButtonListener {
 
 	@Override
 	public void onButtonPress(ButtonEvent event) {
-		if(!SelfDestruct.destruct) {
-			modules.forEach(module -> {
-				if(module.getKey() == event.button && event.action == GLFW.GLFW_PRESS)
-					module.toggle();
-			});
+		if (SelfDestruct.destruct)
+			return;
+
+		// Do not let module keybinds leak through screens or focused text fields.
+		// The ClickGUI key remains a close shortcut when no input has focus.
+		if (Argon.mc != null && Argon.mc.gui.screen() != null) {
+			if (Argon.mc.gui.screen() instanceof dev.lvstrng.argon.gui.ClickGui gui
+					&& !gui.isTextInputFocused()) {
+				ClickGUI clickGUI = getModule(ClickGUI.class);
+				if (clickGUI.getKey() == event.button && event.action == GLFW.GLFW_PRESS)
+					clickGUI.toggle();
+			}
+			return;
 		}
+
+		modules.forEach(module -> {
+			if(module.getKey() == event.button && event.action == GLFW.GLFW_PRESS)
+				module.toggle();
+		});
 	}
 }

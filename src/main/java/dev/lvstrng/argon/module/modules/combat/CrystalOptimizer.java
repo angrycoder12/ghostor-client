@@ -5,15 +5,15 @@ import dev.lvstrng.argon.module.Category;
 import dev.lvstrng.argon.module.Module;
 import dev.lvstrng.argon.utils.EncryptedString;
 import dev.lvstrng.argon.utils.WorldUtils;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.decoration.EndCrystalEntity;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
-import net.minecraft.util.Hand;
-import net.minecraft.util.hit.EntityHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.network.protocol.game.ServerboundInteractPacket;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 
 public final class CrystalOptimizer extends Module implements PacketSendListener {
 	public CrystalOptimizer() {
@@ -37,38 +37,21 @@ public final class CrystalOptimizer extends Module implements PacketSendListener
 
 	@Override
 	public void onPacketSend(PacketSendEvent event) {
-		if (event.packet instanceof PlayerInteractEntityC2SPacket interactPacket) {
-			interactPacket.handle(new PlayerInteractEntityC2SPacket.Handler() {
-				@Override
-				public void interact(Hand hand) {
+		if (!(event.packet instanceof ServerboundInteractPacket interactPacket)
+				|| interactPacket.hand() != null || interactPacket.location() != null || mc.hitResult == null)
+			return;
 
-				}
+		if (mc.hitResult.getType() == HitResult.Type.ENTITY && mc.hitResult instanceof EntityHitResult hit
+				&& hit.getEntity() instanceof EndCrystal) {
+			MobEffectInstance weakness = mc.player.getEffect(MobEffects.WEAKNESS);
+			MobEffectInstance strength = mc.player.getEffect(MobEffects.STRENGTH);
+			if (!(weakness == null || strength != null && strength.getAmplifier() > weakness.getAmplifier()
+					|| WorldUtils.isTool(mc.player.getMainHandItem())))
+				return;
 
-				@Override
-				public void interactAt(Hand hand, Vec3d pos) {
-
-				}
-
-				@Override
-				public void attack() {
-
-					if (mc.crosshairTarget == null)
-						return;
-
-					if (mc.crosshairTarget.getType() == HitResult.Type.ENTITY && mc.crosshairTarget instanceof EntityHitResult hit) {
-						if (hit.getEntity() instanceof EndCrystalEntity) {
-							StatusEffectInstance weakness = mc.player.getStatusEffect(StatusEffects.WEAKNESS);
-							StatusEffectInstance strength = mc.player.getStatusEffect(StatusEffects.STRENGTH);
-							if (!(weakness == null || strength != null && strength.getAmplifier() > weakness.getAmplifier() || WorldUtils.isTool(mc.player.getMainHandStack())))
-								return;
-
-							hit.getEntity().discard();
-							hit.getEntity().setRemoved(Entity.RemovalReason.KILLED);
-							hit.getEntity().onRemoved();
-						}
-					}
-				}
-			});
+			hit.getEntity().discard();
+			hit.getEntity().setRemoved(Entity.RemovalReason.KILLED);
+			hit.getEntity().onClientRemoval();
 		}
 	}
 }

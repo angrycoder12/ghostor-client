@@ -10,8 +10,9 @@ import dev.lvstrng.argon.module.setting.MinMaxSetting;
 import dev.lvstrng.argon.module.setting.ModeSetting;
 import dev.lvstrng.argon.module.setting.NumberSetting;
 import dev.lvstrng.argon.utils.EncryptedString;
-import net.minecraft.client.gui.screen.ingame.InventoryScreen;
-import net.minecraft.network.packet.s2c.play.OpenScreenS2CPacket;
+import dev.lvstrng.argon.utils.ClientState;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.network.protocol.game.ClientboundOpenScreenPacket;
 import org.lwjgl.glfw.GLFW;
 
 public final class ClickGUI extends Module implements PacketReceiveListener {
@@ -42,7 +43,7 @@ public final class ClickGUI extends Module implements PacketReceiveListener {
 	}
 
 	public ClickGUI() {
-		super(EncryptedString.of("Argon"),
+		super(EncryptedString.of("Ghostor"),
 				EncryptedString.of("Settings for the client"),
 				GLFW.GLFW_KEY_RIGHT_SHIFT,
 				Category.CLIENT);
@@ -52,12 +53,16 @@ public final class ClickGUI extends Module implements PacketReceiveListener {
 
 	@Override
 	public void onEnable() {
+		if (!ClientState.canOpenClickGui()) {
+			setEnabledStatus(false);
+			return;
+		}
 		eventManager.add(PacketReceiveListener.class, this);
-		Argon.INSTANCE.previousScreen = mc.currentScreen;
+		Argon.INSTANCE.previousScreen = mc.gui.screen();
 
 		if (Argon.INSTANCE.clickGui != null) {
-			mc.setScreenAndRender(Argon.INSTANCE.clickGui);
-		} else if (mc.currentScreen instanceof InventoryScreen) {
+			mc.gui.setScreen(Argon.INSTANCE.clickGui);
+		} else if (mc.gui.screen() instanceof InventoryScreen) {
 			Argon.INSTANCE.guiInitialized = true;
 		}
 
@@ -68,11 +73,9 @@ public final class ClickGUI extends Module implements PacketReceiveListener {
 	public void onDisable() {
 		eventManager.remove(PacketReceiveListener.class, this);
 
-		if (mc.currentScreen instanceof ClickGui) {
-			Argon.INSTANCE.clickGui.close();
-			mc.setScreenAndRender(Argon.INSTANCE.previousScreen);
+		if (mc.gui.screen() instanceof ClickGui) {
 			Argon.INSTANCE.clickGui.onGuiClose();
-		} else if (mc.currentScreen instanceof InventoryScreen) {
+		} else if (mc.gui.screen() instanceof InventoryScreen) {
 			Argon.INSTANCE.guiInitialized = false;
 		}
 
@@ -83,7 +86,7 @@ public final class ClickGUI extends Module implements PacketReceiveListener {
 	@Override
 	public void onPacketReceive(PacketReceiveEvent event) {
 		if (Argon.INSTANCE.guiInitialized) {
-			if (event.packet instanceof OpenScreenS2CPacket) {
+			if (event.packet instanceof ClientboundOpenScreenPacket) {
 				if (preventClose.getValue())
 					event.cancel();
 			}

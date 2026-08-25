@@ -1,6 +1,6 @@
 package dev.lvstrng.argon.imixin;
 
-import net.minecraft.util.math.Vec3i;
+import net.minecraft.core.Vec3i;
 import org.joml.Vector3d;
 
 public interface IVec3d {

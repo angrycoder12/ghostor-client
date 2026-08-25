@@ -2,9 +2,8 @@ package dev.lvstrng.argon.event.events;
 
 import dev.lvstrng.argon.event.CancellableEvent;
 import dev.lvstrng.argon.event.Listener;
-import net.minecraft.network.packet.Packet;
-
 import java.util.ArrayList;
+import net.minecraft.network.protocol.Packet;
 
 
 public interface PacketReceiveListener extends Listener {

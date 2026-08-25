@@ -7,12 +7,12 @@ import dev.lvstrng.argon.utils.ColorUtils;
 import dev.lvstrng.argon.utils.MathUtils;
 import dev.lvstrng.argon.utils.TextRenderer;
 import dev.lvstrng.argon.utils.Utils;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.util.math.MathHelper;
 import org.joml.Matrix3x2fStack;
 import org.lwjgl.glfw.GLFW;
 
 import java.awt.*;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.util.Mth;
 
 public final class MinMaxSlider extends RenderableSetting {
     public boolean draggingMin;
@@ -36,9 +36,9 @@ public final class MinMaxSlider extends RenderableSetting {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
-        Matrix3x2fStack matrices = context.getMatrices();
+        Matrix3x2fStack matrices = context.pose();
 
         offsetMinX = (setting.getMinValue() - setting.getMin()) / (setting.getMax() - setting.getMin()) * parentWidth();
         offsetMaxX = (setting.getMaxValue() - setting.getMin()) / (setting.getMax() - setting.getMin()) * parentWidth();
@@ -153,13 +153,13 @@ public final class MinMaxSlider extends RenderableSetting {
 
     private void slideMin(double mouseX) {
         double a = mouseX - parentX();
-        double b = MathHelper.clamp(a / parentWidth(), 0, 1);
+        double b = Mth.clamp(a / parentWidth(), 0, 1);
         setting.setMinValue(MathUtils.roundToDecimal(b * (setting.getMax() - setting.getMin()) + setting.getMin(), setting.getIncrement()));
     }
 
     private void slideMax(double mouseX) {
         double a = mouseX - parentX();
-        double b = MathHelper.clamp(a / parentWidth(), 0, 1);
+        double b = Mth.clamp(a / parentWidth(), 0, 1);
         setting.setMaxValue(MathUtils.roundToDecimal(b * (setting.getMax() - setting.getMin()) + setting.getMin(), setting.getIncrement()));
     }
 

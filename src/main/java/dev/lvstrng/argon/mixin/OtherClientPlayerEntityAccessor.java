@@ -1,21 +1,21 @@
 package dev.lvstrng.argon.mixin;
 
-import net.minecraft.client.network.OtherClientPlayerEntity;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.player.RemotePlayer;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-@Mixin(OtherClientPlayerEntity.class)
+@Mixin(RemotePlayer.class)
 public interface OtherClientPlayerEntityAccessor {
-	@Accessor("velocityLerpDivisor")
+	@Accessor("lerpDeltaMovementSteps")
 	int getVelocityLerpDivisor();
 
-	@Accessor("velocityLerpDivisor")
+	@Accessor("lerpDeltaMovementSteps")
 	void setVelocityLerpDivisor(int velocityLerpDivisor);
 
-	@Accessor("clientVelocity")
-	Vec3d getClientVelocity();
+	@Accessor("lerpDeltaMovement")
+	Vec3 getClientVelocity();
 
-	@Accessor("clientVelocity")
-	void setClientVelocity(Vec3d clientVelocity);
+	@Accessor("lerpDeltaMovement")
+	void setClientVelocity(Vec3 clientVelocity);
 }

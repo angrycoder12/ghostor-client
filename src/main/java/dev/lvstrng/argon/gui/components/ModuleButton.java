@@ -8,12 +8,11 @@ import dev.lvstrng.argon.module.Module;
 import dev.lvstrng.argon.module.modules.client.ClickGUI;
 import dev.lvstrng.argon.module.setting.*;
 import dev.lvstrng.argon.utils.*;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 import static dev.lvstrng.argon.Argon.mc;
 
@@ -28,12 +27,14 @@ public final class ModuleButton {
 	public Color defaultColor = Color.WHITE;
 	public Color currentAlpha;
 	public AnimationUtils animation = new AnimationUtils(0);
+	private final AnimationUtils toggleAnimation;
 
 	public ModuleButton(Window parent, Module module, int offset) {
 		this.parent = parent;
 		this.module = module;
 		this.offset = offset;
 		this.extended = false;
+		this.toggleAnimation = new AnimationUtils(module.isEnabled() ? 1 : 0);
 
 		settingOffset = parent.getHeight();
 		for (Setting<?> setting : module.getSettings()) {
@@ -49,13 +50,15 @@ public final class ModuleButton {
 				settings.add(new StringBox(this, stringSetting, settingOffset));
 			else if (setting instanceof MinMaxSetting minMaxSetting)
 				settings.add(new MinMaxSlider(this, minMaxSetting, settingOffset));
+			else if (setting instanceof ActionSetting actionSetting)
+				settings.add(new ActionButton(this, actionSetting, settingOffset));
 
 			settingOffset += parent.getHeight();
 		}
 	}
 
-	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-		if (parent.getY() + offset > MinecraftClient.getInstance().getWindow().getHeight())
+	public void render(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
+		if (parent.getY() + offset > Minecraft.getInstance().getWindow().getHeight())
 			return;
 
 		for (RenderableSetting renderableSetting : settings)
@@ -74,30 +77,27 @@ public final class ModuleButton {
 		if (defaultColor != toColor)
 			defaultColor = ColorUtils.smoothColorTransition(0.1F, toColor, defaultColor);
 
-		Color card = module.isEnabled() ? new Color(52, 48, 78, 255) : GhostorTheme.SURFACE;
-		if (isHovered(mouseX, mouseY)) card = module.isEnabled() ? new Color(63, 58, 94, 255) : GhostorTheme.SURFACE_HOVER;
+		Color card = module.isEnabled() ? new Color(35, 30, 63, 245) : new Color(16, 22, 32, 238);
+		if (isHovered(mouseX, mouseY)) card = module.isEnabled() ? new Color(46, 39, 78, 250) : GhostorTheme.SURFACE_HOVER;
 		GhostorTheme.panel(context, parent.getX() + 8, parent.getY() + offset, parent.getX() + parent.getWidth() - 8,
-				parent.getY() + parent.getHeight() + offset, card, 6);
+				parent.getY() + parent.getHeight() + offset - 3, card, 7);
 		if (module.isEnabled()) context.fill(parent.getX() + 8, parent.getY() + offset + 7, parent.getX() + 11,
-				parent.getY() + parent.getHeight() + offset - 7, GhostorTheme.ACCENT.getRGB());
+				parent.getY() + parent.getHeight() + offset - 10, GhostorTheme.ACCENT.getRGB());
 		GhostorTheme.outline(context, parent.getX() + 8, parent.getY() + offset, parent.getX() + parent.getWidth() - 8,
-				parent.getY() + parent.getHeight() + offset, module.isEnabled() ? new Color(139, 124, 255, 125) : GhostorTheme.BORDER, 6);
+				parent.getY() + parent.getHeight() + offset - 3, module.isEnabled() ? GhostorTheme.ACCENT_BORDER : GhostorTheme.BORDER, 7);
 
 		CharSequence nameChars = module.getName();
-
-		int totalWidth = TextRenderer.getWidth(nameChars);
-
-		int parentCenterX = parent.getX() + parent.getWidth() / 2;
-		int textCenterX = parentCenterX - totalWidth / 2;
-
-		TextRenderer.drawString(nameChars, context, parent.getX() + 21, parent.getY() + offset + 7, defaultColor.getRGB());
+		GhostorIcons.moduleBadge(context, module.getCategory(), parent.getX() + 17, parent.getY() + offset + 9);
+		TextRenderer.drawString(nameChars, context, parent.getX() + 52, parent.getY() + offset + 7, defaultColor.getRGB());
 		if (module.getDescription() != null && parent.getHeight() >= 42) {
-			TextRenderer.drawString(module.getDescription(), context, parent.getX() + 21, parent.getY() + offset + 22, GhostorTheme.TEXT_MUTED.getRGB());
+			TextRenderer.drawSmallString(module.getDescription(), context, parent.getX() + 52, parent.getY() + offset + 25, GhostorTheme.TEXT_MUTED.getRGB());
 		}
-		int toggleX = parent.getX() + parent.getWidth() - 37;
-		int toggleY = parent.getY() + offset + 10;
-		GhostorTheme.panel(context, toggleX, toggleY, toggleX + 21, toggleY + 11, module.isEnabled() ? GhostorTheme.ACCENT : GhostorTheme.DISABLED, 6);
-		RenderUtils.renderCircle(context, Color.WHITE, toggleX + (module.isEnabled() ? 16 : 5), toggleY + 5.5, 3, 10);
+		int toggleX = parent.getX() + parent.getWidth() - 52;
+		int toggleY = parent.getY() + offset + 12;
+		double toggleProgress = toggleAnimation.animate(0.3 * delta, module.isEnabled() ? 1 : 0);
+		GhostorTheme.panel(context, toggleX, toggleY, toggleX + 34, toggleY + 18,
+				module.isEnabled() ? GhostorTheme.ACCENT : new Color(65, 76, 96), 9);
+		RenderUtils.renderCircle(context, Color.WHITE, toggleX + 9 + toggleProgress * 16, toggleY + 9, 6, 16);
 
 		renderHover(context, mouseX, mouseY, delta);
 		renderSettings(context, mouseX, mouseY, delta);
@@ -105,30 +105,9 @@ public final class ModuleButton {
 		for(RenderableSetting renderableSetting : settings)
 			if(extended) renderableSetting.renderDescription(context, mouseX, mouseY, delta);
 
-		if (isHovered(mouseX, mouseY) && !parent.dragging) {
-			CharSequence chars = module.getDescription();
-
-			int tw = TextRenderer.getWidth(chars);
-
-			int parentCenter = mc.getWindow().getFramebufferWidth() / 2;
-			int textCenter = parentCenter - tw / 2;
-
-			RenderUtils.renderRoundedQuad(
-					context,
-					new Color(100, 100, 100, 100),
-					textCenter - 5,
-					((double) mc.getWindow().getFramebufferHeight() / 2) + 294,
-					textCenter + tw + 5,
-					((double) mc.getWindow().getFramebufferHeight() / 2) + 318,
-					3,
-					10
-			);
-
-			TextRenderer.drawString(chars, context, textCenter, (mc.getWindow().getFramebufferHeight() / 2) + 300, Color.WHITE.getRGB());
-		}
 	}
 
-	private void renderHover(DrawContext context, int mouseX, int mouseY, float delta) {
+	private void renderHover(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
 		if (!parent.dragging) {
 			int toHoverAlpha = isHovered(mouseX, mouseY) ? 8 : 0;
 
@@ -139,11 +118,13 @@ public final class ModuleButton {
 			if (currentAlpha.getAlpha() != toHoverAlpha)
 				currentAlpha = ColorUtils.smoothAlphaTransition(0.05F, toHoverAlpha, currentAlpha);
 
-			context.fill(parent.getX(), parent.getY() + offset, parent.getX() + parent.getWidth(), parent.getY() + parent.getHeight() + offset, currentAlpha.getRGB());
+			GhostorTheme.panel(context, parent.getX() + 8, parent.getY() + offset,
+					parent.getX() + parent.getWidth() - 8, parent.getY() + parent.getHeight() + offset - 3,
+					currentAlpha, 7);
 		}
 	}
 
-	private void renderSettings(DrawContext context, int mouseX, int mouseY, float delta) {
+	private void renderSettings(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
 		int scissorX1 = parent.getX();
 		int scissorY1 = parent.getY() + offset;
 		int scissorX2 = scissorX1 + parent.getWidth();

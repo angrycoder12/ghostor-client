@@ -6,10 +6,10 @@ import dev.lvstrng.argon.module.setting.ModeSetting;
 import dev.lvstrng.argon.module.setting.Setting;
 import dev.lvstrng.argon.utils.ColorUtils;
 import dev.lvstrng.argon.utils.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
 import org.lwjgl.glfw.GLFW;
 
 import java.awt.*;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 public final class ModeBox extends RenderableSetting {
 	public final ModeSetting<?> setting;
@@ -21,7 +21,7 @@ public final class ModeBox extends RenderableSetting {
 	}
 
 	@Override
-	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+	public void render(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
 		super.render(context, mouseX, mouseY, delta);
 
 		int nameOffset = parentX() + 20;

@@ -11,9 +11,9 @@
     "homepage": ""
   },
   "license": "See bundled LICENSE",
-  "environment": "*",
+  "environment": "client",
   "entrypoints": {
-    "main": [
+    "client": [
       "dev.lvstrng.argon.Main"
     ]
   },
@@ -22,8 +22,9 @@
   ],
   "depends": {
     "fabricloader": ">=${loader_version}",
-    "fabric": "*",
-    "minecraft": "~1.21.11"
+    "fabric-api": "*",
+    "java": ">=25",
+    "minecraft": "~26.2"
   },
   "recommends": {
     "sodium": "*"

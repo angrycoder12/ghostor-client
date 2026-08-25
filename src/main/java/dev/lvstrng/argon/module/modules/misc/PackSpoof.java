@@ -4,9 +4,9 @@ import dev.lvstrng.argon.event.events.PacketReceiveListener;
 import dev.lvstrng.argon.module.Category;
 import dev.lvstrng.argon.module.Module;
 import dev.lvstrng.argon.utils.EncryptedString;
-import net.minecraft.network.packet.Packet;
-import net.minecraft.network.packet.c2s.common.ResourcePackStatusC2SPacket;
-import net.minecraft.network.packet.s2c.common.ResourcePackSendS2CPacket;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.common.ClientboundResourcePackPushPacket;
+import net.minecraft.network.protocol.common.ServerboundResourcePackPacket;
 
 public class PackSpoof extends Module implements PacketReceiveListener {
     public PackSpoof() {
@@ -27,13 +27,13 @@ public class PackSpoof extends Module implements PacketReceiveListener {
 
     @Override
     public void onPacketReceive(PacketReceiveEvent event) {
-        if(mc.getNetworkHandler() != null) {
+        if(mc.getConnection() != null) {
             Packet<?> packet = event.packet;
-            if (packet instanceof ResourcePackSendS2CPacket) {
+            if (packet instanceof ClientboundResourcePackPushPacket) {
                 event.cancel();
 
-                mc.getNetworkHandler().sendPacket(new ResourcePackStatusC2SPacket(mc.player.getUuid(), ResourcePackStatusC2SPacket.Status.ACCEPTED));
-                mc.getNetworkHandler().sendPacket(new ResourcePackStatusC2SPacket(mc.player.getUuid(), ResourcePackStatusC2SPacket.Status.SUCCESSFULLY_LOADED));
+                mc.getConnection().send(new ServerboundResourcePackPacket(mc.player.getUUID(), ServerboundResourcePackPacket.Action.ACCEPTED));
+                mc.getConnection().send(new ServerboundResourcePackPacket(mc.player.getUUID(), ServerboundResourcePackPacket.Action.SUCCESSFULLY_LOADED));
             }
         }
     }

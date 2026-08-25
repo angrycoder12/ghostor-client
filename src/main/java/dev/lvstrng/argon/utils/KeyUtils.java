@@ -226,8 +226,8 @@ public final class KeyUtils {
 
 	public static boolean isKeyPressed(int keyCode) {
 		if (keyCode <= 8)
-			return GLFW.glfwGetMouseButton(mc.getWindow().getHandle(), keyCode) == GLFW.GLFW_PRESS;
+			return GLFW.glfwGetMouseButton(mc.getWindow().handle(), keyCode) == GLFW.GLFW_PRESS;
 
-		return GLFW.glfwGetKey(mc.getWindow().getHandle(), keyCode) == GLFW.GLFW_PRESS;
+		return GLFW.glfwGetKey(mc.getWindow().handle(), keyCode) == GLFW.GLFW_PRESS;
 	}
 }

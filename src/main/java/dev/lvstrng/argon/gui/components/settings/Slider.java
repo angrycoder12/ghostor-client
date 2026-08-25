@@ -5,11 +5,11 @@ import dev.lvstrng.argon.gui.GhostorTheme;
 import dev.lvstrng.argon.module.setting.NumberSetting;
 import dev.lvstrng.argon.module.setting.Setting;
 import dev.lvstrng.argon.utils.*;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.util.math.MathHelper;
 import org.lwjgl.glfw.GLFW;
 
 import java.awt.*;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.util.Mth;
 
 public final class Slider extends RenderableSetting {
 	public boolean dragging;
@@ -52,7 +52,7 @@ public final class Slider extends RenderableSetting {
 	}
 
 	@Override
-	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+	public void render(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
 		super.render(context, mouseX, mouseY, delta);
 
 		offsetX = (setting.getValue() - setting.getMin()) / (setting.getMax() - setting.getMin()) * parentWidth();
@@ -89,7 +89,7 @@ public final class Slider extends RenderableSetting {
 
 	private void slide(double mouseX) {
 		double a = mouseX - parentX();
-		double b = MathHelper.clamp(a / parentWidth(), 0, 1);
+		double b = Mth.clamp(a / parentWidth(), 0, 1);
 		setting.setValue(MathUtils.roundToDecimal(b * (setting.getMax() - setting.getMin()) + setting.getMin(), setting.getIncrement()));
 	}
 

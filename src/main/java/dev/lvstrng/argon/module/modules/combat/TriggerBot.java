@@ -13,14 +13,17 @@ import dev.lvstrng.argon.utils.EncryptedString;
 import dev.lvstrng.argon.utils.MouseSimulation;
 import dev.lvstrng.argon.utils.TimerUtils;
 import dev.lvstrng.argon.utils.WorldUtils;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.mob.ZombieEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.fluid.Fluids;
-import net.minecraft.item.*;
-import net.minecraft.util.hit.EntityHitResult;
-import net.minecraft.util.hit.HitResult;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.*;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.ShieldItem;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
 import org.lwjgl.glfw.GLFW;
 
 public final class TriggerBot extends Module implements TickListener, AttackListener {
@@ -94,36 +97,36 @@ public final class TriggerBot extends Module implements TickListener, AttackList
 	@Override
 	public void onTick() {
 		try {
-			if (!inScreen.getValue() && mc.currentScreen != null)
+			if (!inScreen.getValue() && mc.gui.screen() != null)
 				return;
 
 			if(Argon.INSTANCE.getModuleManager().getModule(Friends.class).antiAttack.getValue() && Argon.INSTANCE.getFriendManager().isAimingOverFriend())
 				return;
 
-			ItemStack mainHandStack = mc.player.getMainHandStack();
+			ItemStack mainHandStack = mc.player.getMainHandItem();
 			Item item = mainHandStack.getItem();
 
-			if (onLeftClick.getValue() && GLFW.glfwGetMouseButton(mc.getWindow().getHandle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS)
+			if (onLeftClick.getValue() && GLFW.glfwGetMouseButton(mc.getWindow().handle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS)
 				return;
 
-			if (((mc.player.getOffHandStack().getItem().getComponents().contains(DataComponentTypes.FOOD) || mc.player.getOffHandStack().getItem() instanceof ShieldItem) && GLFW.glfwGetMouseButton(mc.getWindow().getHandle(), GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS) && !whileUse.getValue())
+			if (((mc.player.getOffhandItem().getItem().components().has(DataComponents.FOOD) || mc.player.getOffhandItem().getItem() instanceof ShieldItem) && GLFW.glfwGetMouseButton(mc.getWindow().handle(), GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS) && !whileUse.getValue())
 				return;
 			
-			if (!whileAscend.getValue() && ((!mc.player.isOnGround() && mc.player.getVelocity().y > 0) || (!mc.player.isOnGround() && mc.player.fallDistance <= 0.0F)))
+			if (!whileAscend.getValue() && ((!mc.player.onGround() && mc.player.getDeltaMovement().y > 0) || (!mc.player.onGround() && mc.player.fallDistance <= 0.0F)))
 				return;
 
 			if (!allItems.getValue()) {
 				if (WorldUtils.isSword(mainHandStack)) {
-					if (mc.crosshairTarget instanceof EntityHitResult hit) {
+					if (mc.hitResult instanceof EntityHitResult hit) {
 						Entity entity = hit.getEntity();
 
-						assert mc.player.getAttacking() != null;
-						if (sticky.getValue() && entity != mc.player.getAttacking())
+						assert mc.player.getLastHurtMob() != null;
+						if (sticky.getValue() && entity != mc.player.getLastHurtMob())
 							return;
 
-						if (entity instanceof PlayerEntity || (strayBypass.getValue() && entity instanceof ZombieEntity) || (allEntities.getValue() && entity != null)) {
+						if (entity instanceof Player || (strayBypass.getValue() && entity instanceof Zombie) || (allEntities.getValue() && entity != null)) {
 
-							if (entity instanceof PlayerEntity player) {
+							if (entity instanceof Player player) {
 								if (checkShield.getValue() && player.isBlocking() && !WorldUtils.isShieldFacingAway(player))
 									return;
 							}
@@ -133,7 +136,7 @@ public final class TriggerBot extends Module implements TickListener, AttackList
 
 							if (timer.delay(currentSwordDelay)) {
 								if (useShield.getValue()) {
-									if (mc.player.getOffHandStack().getItem() == Items.SHIELD && mc.player.isBlocking())
+									if (mc.player.getOffhandItem().getItem() == Items.SHIELD && mc.player.isBlocking())
 										MouseSimulation.mouseRelease(GLFW.GLFW_MOUSE_BUTTON_RIGHT);
 								}
 
@@ -146,7 +149,7 @@ public final class TriggerBot extends Module implements TickListener, AttackList
 								timer.reset();
 							} else {
 								if (useShield.getValue()) {
-									if (mc.player.getOffHandStack().getItem() == Items.SHIELD) {
+									if (mc.player.getOffhandItem().getItem() == Items.SHIELD) {
 										int useFor = shieldTime.getValueInt();
 										MouseSimulation.mouseClick(GLFW.GLFW_MOUSE_BUTTON_RIGHT, useFor);
 									}
@@ -155,11 +158,11 @@ public final class TriggerBot extends Module implements TickListener, AttackList
 						}
 					}
 				} else if (WorldUtils.isAxe(mainHandStack)) {
-					if (mc.crosshairTarget instanceof EntityHitResult hit) {
+					if (mc.hitResult instanceof EntityHitResult hit) {
 						Entity entity = hit.getEntity();
 
-						if (entity instanceof PlayerEntity || (strayBypass.getValue() && entity instanceof ZombieEntity) || (allEntities.getValue() && entity != null)) {
-							if (entity instanceof PlayerEntity player) {
+						if (entity instanceof Player || (strayBypass.getValue() && entity instanceof Zombie) || (allEntities.getValue() && entity != null)) {
+							if (entity instanceof Player player) {
 								if (checkShield.getValue() && player.isBlocking() && !WorldUtils.isShieldFacingAway(player))
 									return;
 							}
@@ -177,7 +180,7 @@ public final class TriggerBot extends Module implements TickListener, AttackList
 								timer.reset();
 							} else {
 								if (useShield.getValue()) {
-									if (mc.player.getOffHandStack().getItem() == Items.SHIELD) {
+									if (mc.player.getOffhandItem().getItem() == Items.SHIELD) {
 										int useFor = shieldTime.getValueInt();
 										MouseSimulation.mouseClick(GLFW.GLFW_MOUSE_BUTTON_RIGHT, useFor);
 									}
@@ -187,15 +190,15 @@ public final class TriggerBot extends Module implements TickListener, AttackList
 					}
 				}
 			} else {
-				if (mc.crosshairTarget instanceof EntityHitResult entityHit && mc.crosshairTarget.getType() == HitResult.Type.ENTITY) {
+				if (mc.hitResult instanceof EntityHitResult entityHit && mc.hitResult.getType() == HitResult.Type.ENTITY) {
 					Entity entity = entityHit.getEntity();
 
-					assert mc.player.getAttacking() != null;
-					if (sticky.getValue() && entity != mc.player.getAttacking())
+					assert mc.player.getLastHurtMob() != null;
+					if (sticky.getValue() && entity != mc.player.getLastHurtMob())
 						return;
 
-					if (entity instanceof PlayerEntity || (strayBypass.getValue() && entity instanceof ZombieEntity) || (allEntities.getValue() && entity != null)) {
-						if (entity instanceof PlayerEntity player) {
+					if (entity instanceof Player || (strayBypass.getValue() && entity instanceof Zombie) || (allEntities.getValue() && entity != null)) {
+						if (entity instanceof Player player) {
 							if (checkShield.getValue() && player.isBlocking() && !WorldUtils.isShieldFacingAway(player))
 								return;
 						}
@@ -213,7 +216,7 @@ public final class TriggerBot extends Module implements TickListener, AttackList
 							timer.reset();
 						} else {
 							if (useShield.getValue()) {
-								if (mc.player.getOffHandStack().getItem() == Items.SHIELD) {
+								if (mc.player.getOffhandItem().getItem() == Items.SHIELD) {
 									int useFor = shieldTime.getValueInt();
 									MouseSimulation.mouseClick(GLFW.GLFW_MOUSE_BUTTON_RIGHT, useFor);
 								}
@@ -227,7 +230,7 @@ public final class TriggerBot extends Module implements TickListener, AttackList
 
 	@Override
 	public void onAttack(AttackEvent event) {
-		if (GLFW.glfwGetMouseButton(mc.getWindow().getHandle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS)
+		if (GLFW.glfwGetMouseButton(mc.getWindow().handle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS)
 			event.cancel();
 	}
 }

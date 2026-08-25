@@ -2,21 +2,32 @@ package dev.lvstrng.argon.module.modules.misc;
 
 import dev.lvstrng.argon.event.events.CameraUpdateListener;
 import dev.lvstrng.argon.event.events.TickListener;
+import dev.lvstrng.argon.imixin.IKeyBinding;
 import dev.lvstrng.argon.mixin.KeyBindingAccessor;
 import dev.lvstrng.argon.module.Category;
 import dev.lvstrng.argon.module.Module;
 import dev.lvstrng.argon.module.setting.NumberSetting;
 import dev.lvstrng.argon.utils.EncryptedString;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.multiplayer.ClientChunkCache;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.phys.Vec3;
 import org.lwjgl.glfw.GLFW;
+
+import java.util.HashSet;
+import java.util.Set;
 
 
 public final class Freecam extends Module implements TickListener, CameraUpdateListener {
 	private final NumberSetting speed = new NumberSetting(EncryptedString.of("Speed"), 1, 10, 1, 1);
-	public Vec3d oldPos;
-	public Vec3d pos;
+	public Vec3 oldPos;
+	public Vec3 pos;
+	private final Set<ChunkPos> retainedChunks = new HashSet<>();
+	private ClientChunkCache retainedCache;
+	private ClientLevel observedLevel;
+	private boolean retainingWorldSections;
 
 	public Freecam() {
 		super(EncryptedString.of("Freecam"),
@@ -25,16 +36,19 @@ public final class Freecam extends Module implements TickListener, CameraUpdateL
 				Category.MISC);
 		addSettings(speed);
 
-		oldPos = Vec3d.ZERO;
-		pos = Vec3d.ZERO;
+		oldPos = Vec3.ZERO;
+		pos = Vec3.ZERO;
 	}
 
 	@Override
 	public void onEnable() {
 		eventManager.add(TickListener.class, this);
 		eventManager.add(CameraUpdateListener.class, this);
-		if (mc.world != null) {
-			this.oldPos = this.pos = mc.player.getEyePos();
+		clearRetainedChunks(false);
+		observedLevel = mc.level;
+		retainingWorldSections = mc.level != null && mc.player != null;
+		if (mc.level != null && mc.player != null) {
+			this.oldPos = this.pos = mc.player.getEyePosition();
 		}
 
 		super.onEnable();
@@ -44,68 +58,86 @@ public final class Freecam extends Module implements TickListener, CameraUpdateL
 	public void onDisable() {
 		eventManager.remove(TickListener.class, this);
 		eventManager.remove(CameraUpdateListener.class, this);
+		clearRetainedChunks(true);
+		observedLevel = null;
+		retainingWorldSections = false;
+		restoreSuppressedInput();
 
-		if (mc.world != null) {
-			mc.player.setVelocity(Vec3d.ZERO);
-			mc.worldRenderer.reload();
+		if (mc.level != null && mc.player != null) {
+			mc.player.setDeltaMovement(Vec3.ZERO);
+			mc.levelExtractor.allChanged();
 		}
 		super.onDisable();
 	}
 
 	@Override
 	public void onTick() {
-		if (mc.currentScreen != null)
+		if (mc.level == null || mc.player == null) {
+			clearRetainedChunks(false);
+			observedLevel = null;
+			retainingWorldSections = false;
+			return;
+		}
+
+		if (observedLevel != mc.level) {
+			clearRetainedChunks(false);
+			observedLevel = mc.level;
+			oldPos = pos = mc.player.getEyePosition();
+			retainingWorldSections = true;
+		}
+
+		if (mc.gui.screen() != null)
 			return;
 
-		mc.options.useKey.setPressed(false);
-		mc.options.attackKey.setPressed(false);
-		mc.options.forwardKey.setPressed(false);
-		mc.options.backKey.setPressed(false);
-		mc.options.leftKey.setPressed(false);
-		mc.options.rightKey.setPressed(false);
-		mc.options.jumpKey.setPressed(false);
-		mc.options.sneakKey.setPressed(false);
+		mc.options.keyUse.setDown(false);
+		mc.options.keyAttack.setDown(false);
+		mc.options.keyUp.setDown(false);
+		mc.options.keyDown.setDown(false);
+		mc.options.keyLeft.setDown(false);
+		mc.options.keyRight.setDown(false);
+		mc.options.keyJump.setDown(false);
+		mc.options.keyShift.setDown(false);
 
 		float f = (float) Math.PI / 180;
 		float f2 = (float) Math.PI;
-		Vec3d vec3d = new Vec3d(-MathHelper.sin(-mc.player.getYaw() * f - f2), 0.0, -MathHelper.cos(-mc.player.getYaw() * f - f2));
-		Vec3d vec3d2 = new Vec3d(0.0, 1.0, 0.0);
-		Vec3d vec3d3 = vec3d2.crossProduct(vec3d);
-		Vec3d vec3d4 = vec3d.crossProduct(vec3d2);
-		Vec3d vec3d5 = Vec3d.ZERO;
-		KeyBinding keyBinding = mc.options.forwardKey;
+		Vec3 vec3d = new Vec3(-Mth.sin(-mc.player.getYRot() * f - f2), 0.0, -Mth.cos(-mc.player.getYRot() * f - f2));
+		Vec3 vec3d2 = new Vec3(0.0, 1.0, 0.0);
+		Vec3 vec3d3 = vec3d2.cross(vec3d);
+		Vec3 vec3d4 = vec3d.cross(vec3d2);
+		Vec3 vec3d5 = Vec3.ZERO;
+		KeyMapping keyBinding = mc.options.keyUp;
 
-		if (GLFW.glfwGetKey(mc.getWindow().getHandle(), ((KeyBindingAccessor) keyBinding).getBoundKey().getCode()) == GLFW.GLFW_PRESS) {
+		if (GLFW.glfwGetKey(mc.getWindow().handle(), ((KeyBindingAccessor) keyBinding).getBoundKey().getValue()) == GLFW.GLFW_PRESS) {
 			vec3d5 = vec3d5.add(vec3d);
 		}
 
-		KeyBinding keyBinding2 = mc.options.backKey;
-		if (GLFW.glfwGetKey(mc.getWindow().getHandle(), ((KeyBindingAccessor) keyBinding2).getBoundKey().getCode()) == GLFW.GLFW_PRESS) {
+		KeyMapping keyBinding2 = mc.options.keyDown;
+		if (GLFW.glfwGetKey(mc.getWindow().handle(), ((KeyBindingAccessor) keyBinding2).getBoundKey().getValue()) == GLFW.GLFW_PRESS) {
 			vec3d5 = vec3d5.subtract(vec3d);
 		}
 
-		KeyBinding keyBinding3 = mc.options.leftKey;
-		if (GLFW.glfwGetKey(mc.getWindow().getHandle(), ((KeyBindingAccessor) keyBinding3).getBoundKey().getCode()) == GLFW.GLFW_PRESS) {
+		KeyMapping keyBinding3 = mc.options.keyLeft;
+		if (GLFW.glfwGetKey(mc.getWindow().handle(), ((KeyBindingAccessor) keyBinding3).getBoundKey().getValue()) == GLFW.GLFW_PRESS) {
 			vec3d5 = vec3d5.add(vec3d3);
 		}
 
-		KeyBinding keyBinding4 = mc.options.rightKey;
-		if (GLFW.glfwGetKey(mc.getWindow().getHandle(), ((KeyBindingAccessor) keyBinding4).getBoundKey().getCode()) == GLFW.GLFW_PRESS) {
+		KeyMapping keyBinding4 = mc.options.keyRight;
+		if (GLFW.glfwGetKey(mc.getWindow().handle(), ((KeyBindingAccessor) keyBinding4).getBoundKey().getValue()) == GLFW.GLFW_PRESS) {
 			vec3d5 = vec3d5.add(vec3d4);
 		}
 
-		KeyBinding keyBinding5 = mc.options.jumpKey;
-		if (GLFW.glfwGetKey(mc.getWindow().getHandle(), ((KeyBindingAccessor) keyBinding5).getBoundKey().getCode()) == GLFW.GLFW_PRESS) {
+		KeyMapping keyBinding5 = mc.options.keyJump;
+		if (GLFW.glfwGetKey(mc.getWindow().handle(), ((KeyBindingAccessor) keyBinding5).getBoundKey().getValue()) == GLFW.GLFW_PRESS) {
 			vec3d5 = vec3d5.add(0.0, speed.getValue(), 0.0);
 		}
 
-		KeyBinding keyBinding6 = mc.options.sneakKey;
-		if (GLFW.glfwGetKey(mc.getWindow().getHandle(), ((KeyBindingAccessor) keyBinding6).getBoundKey().getCode()) == GLFW.GLFW_PRESS) {
+		KeyMapping keyBinding6 = mc.options.keyShift;
+		if (GLFW.glfwGetKey(mc.getWindow().handle(), ((KeyBindingAccessor) keyBinding6).getBoundKey().getValue()) == GLFW.GLFW_PRESS) {
 			vec3d5 = vec3d5.add(0.0, -speed.getValue(), 0.0);
 		}
 
-		KeyBinding keyBinding7 = mc.options.sprintKey;
-		vec3d5 = vec3d5.normalize().multiply(speed.getValue() * (GLFW.glfwGetKey(mc.getWindow().getHandle(), ((KeyBindingAccessor) keyBinding7).getBoundKey().getCode()) == GLFW.GLFW_PRESS ? 2 : 1));
+		KeyMapping keyBinding7 = mc.options.keySprint;
+		vec3d5 = vec3d5.normalize().scale(speed.getValue() * (GLFW.glfwGetKey(mc.getWindow().handle(), ((KeyBindingAccessor) keyBinding7).getBoundKey().getValue()) == GLFW.GLFW_PRESS ? 2 : 1));
 
 		oldPos = pos;
 		pos = pos.add(vec3d5);
@@ -113,13 +145,77 @@ public final class Freecam extends Module implements TickListener, CameraUpdateL
 
 	@Override
 	public void onCameraUpdate(CameraUpdateEvent event) {
-		float tickDelta = mc.getRenderTickCounter().getTickProgress(true);
+		if (mc.player == null || mc.level == null) {
+			return;
+		}
 
-		if (mc.currentScreen != null)
+		float tickDelta = mc.getDeltaTracker().getGameTimeDeltaPartialTick(true);
+
+		if (mc.gui.screen() != null)
 			return;
 
-		event.setX(MathHelper.lerp(tickDelta, oldPos.x, pos.x));
-		event.setY(MathHelper.lerp(tickDelta, oldPos.y, pos.y));
-		event.setZ(MathHelper.lerp(tickDelta, oldPos.z, pos.z));
+		event.setX(Mth.lerp(tickDelta, oldPos.x, pos.x));
+		event.setY(Mth.lerp(tickDelta, oldPos.y, pos.y));
+		event.setZ(Mth.lerp(tickDelta, oldPos.z, pos.z));
+	}
+
+	/** Called from the packet hook before vanilla drops the chunk and its light data. */
+	public boolean retainChunk(ChunkPos chunkPos) {
+		if (!isEnabled() || !retainingWorldSections || mc.level == null) {
+			return false;
+		}
+
+		ClientChunkCache cache = mc.level.getChunkSource();
+		if (retainedCache != null && retainedCache != cache) {
+			retainedChunks.clear();
+		}
+		retainedCache = cache;
+		retainedChunks.add(chunkPos);
+		return true;
+	}
+
+	public static Freecam enabledInstance() {
+		if (dev.lvstrng.argon.Argon.INSTANCE == null
+				|| dev.lvstrng.argon.Argon.INSTANCE.getModuleManager() == null) {
+			return null;
+		}
+		Freecam freecam = dev.lvstrng.argon.Argon.INSTANCE.getModuleManager().getModule(Freecam.class);
+		return freecam != null && freecam.isEnabled() ? freecam : null;
+	}
+
+	public static boolean shouldKeepRenderSections() {
+		Freecam freecam = enabledInstance();
+		return freecam != null && freecam.retainingWorldSections;
+	}
+
+	public static void onWorldChanged() {
+		Freecam freecam = enabledInstance();
+		if (freecam != null) {
+			freecam.clearRetainedChunks(false);
+			freecam.observedLevel = null;
+			freecam.retainingWorldSections = false;
+			freecam.oldPos = freecam.pos = Vec3.ZERO;
+		}
+	}
+
+	private void clearRetainedChunks(boolean releaseCurrentWorld) {
+		ClientChunkCache current = mc.level == null ? null : mc.level.getChunkSource();
+		if (releaseCurrentWorld && retainedCache != null && retainedCache == current) {
+			for (ChunkPos chunkPos : Set.copyOf(retainedChunks)) {
+				retainedCache.drop(chunkPos);
+			}
+		}
+		retainedChunks.clear();
+		retainedCache = null;
+	}
+
+	private void restoreSuppressedInput() {
+		KeyMapping[] suppressed = {
+				mc.options.keyUse, mc.options.keyAttack, mc.options.keyUp, mc.options.keyDown,
+				mc.options.keyLeft, mc.options.keyRight, mc.options.keyJump, mc.options.keyShift
+		};
+		for (KeyMapping key : suppressed) {
+			((IKeyBinding) key).resetPressed();
+		}
 	}
 }

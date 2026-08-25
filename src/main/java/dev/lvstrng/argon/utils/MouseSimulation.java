@@ -22,12 +22,12 @@ public final class MouseSimulation {
 
 	public static void mousePress(int keyCode) {
 		mouseButtons.put(keyCode, true);
-		EventManager.fire(new ButtonListener.ButtonEvent(keyCode, mc.getWindow().getHandle(), GLFW.GLFW_PRESS));
+		EventManager.fire(new ButtonListener.ButtonEvent(keyCode, mc.getWindow().handle(), GLFW.GLFW_PRESS));
 	}
 
 	public static void mouseRelease(int keyCode) {
 		mouseButtons.put(keyCode, false);
-		EventManager.fire(new ButtonListener.ButtonEvent(keyCode, mc.getWindow().getHandle(), GLFW.GLFW_RELEASE));
+		EventManager.fire(new ButtonListener.ButtonEvent(keyCode, mc.getWindow().handle(), GLFW.GLFW_RELEASE));
 	}
 
 	public static void mouseClick(int keyCode, int millis) {

@@ -2,14 +2,14 @@ package dev.lvstrng.argon.utils;
 
 import dev.lvstrng.argon.module.modules.client.ClickGUI;
 import dev.lvstrng.argon.module.modules.client.SelfDestruct;
-import net.minecraft.client.network.PlayerListEntry;
-import net.minecraft.entity.Entity;
-
 import java.awt.*;
 import java.io.*;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.world.entity.Entity;
 
 import static dev.lvstrng.argon.Argon.mc;
 
@@ -32,9 +32,9 @@ public final class Utils {
 	}
 
 	public static int getPing(Entity player) {
-		if (mc.getNetworkHandler().getConnection() == null) return 0;
+		if (mc.getConnection().getConnection() == null) return 0;
 
-		PlayerListEntry playerListEntry = mc.getNetworkHandler().getPlayerListEntry((player.getUuid()));
+		PlayerInfo playerListEntry = mc.getConnection().getPlayerInfo((player.getUUID()));
 		if (playerListEntry == null) return 0;
 		return playerListEntry.getLatency();
 	}
@@ -60,7 +60,7 @@ public final class Utils {
 	}
 
 	public static void replaceModFile(String downloadURL, File savePath) throws IOException {
-		URL url = new URL(downloadURL);
+		URL url = URI.create(downloadURL).toURL();
 		HttpURLConnection httpConnection = (HttpURLConnection) url.openConnection();
 		httpConnection.setRequestMethod("GET");
 

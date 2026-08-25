@@ -2,23 +2,26 @@ package dev.lvstrng.argon.utils;
 
 import dev.lvstrng.argon.Argon;
 import dev.lvstrng.argon.module.modules.client.Friends;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.projectile.ProjectileUtil;
-import net.minecraft.item.ItemStack;
-import net.minecraft.registry.tag.ItemTags;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Hand;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.EntityHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.*;
-import net.minecraft.world.RaycastContext;
-import net.minecraft.world.chunk.WorldChunk;
-
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.tags.ItemTags;
+import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.ProjectileUtil;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import java.util.Objects;
 import java.util.stream.Stream;
 
@@ -26,21 +29,21 @@ import static dev.lvstrng.argon.Argon.mc;
 
 public final class WorldUtils {
 	public static boolean isDeadBodyNearby() {
-		return mc.world.getPlayers().parallelStream()
+		return mc.level.players().parallelStream()
 				.filter(e -> e != mc.player)
-				.filter(e -> e.squaredDistanceTo(mc.player) <= 36)
-				.anyMatch(LivingEntity::isDead);
+				.filter(e -> e.distanceToSqr(mc.player) <= 36)
+				.anyMatch(LivingEntity::isDeadOrDying);
 	}
 
-	public static Entity findNearestEntity(PlayerEntity toPlayer, float radius, boolean seeOnly) {
+	public static Entity findNearestEntity(Player toPlayer, float radius, boolean seeOnly) {
 		float mr = Float.MAX_VALUE;
 		Entity entity = null;
 
-		assert mc.world != null;
-		for (Entity e : mc.world.getEntities()) {
+		assert mc.level != null;
+		for (Entity e : mc.level.entitiesForRendering()) {
 			float d = e.distanceTo(toPlayer);
 
-			if (e != toPlayer && d <= radius && mc.player.canSee(e) == seeOnly) {
+			if (e != toPlayer && d <= radius && mc.player.hasLineOfSight(e) == seeOnly) {
 				if (d < mr) {
 					mr = d;
 					entity = e;
@@ -50,21 +53,21 @@ public final class WorldUtils {
 		return entity;
 	}
 
-	public static double distance(Vec3d fromVec, Vec3d toVec) {
+	public static double distance(Vec3 fromVec, Vec3 toVec) {
 		return Math.sqrt(Math.pow(toVec.x - fromVec.x, 2) + Math.pow(toVec.y - fromVec.y, 2) + Math.pow(toVec.z - fromVec.z, 2));
 	}
 
-	public static PlayerEntity findNearestPlayer(PlayerEntity toPlayer, float range, boolean seeOnly, boolean excludeFriends) {
+	public static Player findNearestPlayer(Player toPlayer, float range, boolean seeOnly, boolean excludeFriends) {
 		float minRange = Float.MAX_VALUE;
-		PlayerEntity minPlayer = null;
+		Player minPlayer = null;
 
-		for (PlayerEntity player : mc.world.getPlayers()) {
-			float distance = (float) distance(toPlayer.getEntityPos(), player.getEntityPos());
+		for (Player player : mc.level.players()) {
+			float distance = (float) distance(toPlayer.position(), player.position());
 
 			if(excludeFriends && Argon.INSTANCE.getModuleManager().getModule(Friends.class).disableAimAssist.getValue() && Argon.INSTANCE.getFriendManager().isFriend(player))
 				continue;
 
-			if (player != toPlayer && distance <= range && player.canSee(toPlayer) == seeOnly) {
+			if (player != toPlayer && distance <= range && player.hasLineOfSight(toPlayer) == seeOnly) {
 				if (distance < minRange) {
 					minRange = distance;
 					minPlayer = player;
@@ -75,56 +78,56 @@ public final class WorldUtils {
 		return minPlayer;
 	}
 
-	public static Vec3d getPlayerLookVec(float yaw, float pitch) {
+	public static Vec3 getPlayerLookVec(float yaw, float pitch) {
 		float f = pitch * 0.017453292F;
 		float g = -yaw * 0.017453292F;
 
-		float h = MathHelper.cos(g);
-		float i = MathHelper.sin(g);
-		float j = MathHelper.cos(f);
-		float k = MathHelper.sin(f);
+		float h = Mth.cos(g);
+		float i = Mth.sin(g);
+		float j = Mth.cos(f);
+		float k = Mth.sin(f);
 
-		return new Vec3d((i * j), (-k), (h * j));
+		return new Vec3((i * j), (-k), (h * j));
 	}
 
-	public static Vec3d getPlayerLookVec(PlayerEntity player) {
-		return getPlayerLookVec(player.getYaw(), player.getPitch());
+	public static Vec3 getPlayerLookVec(Player player) {
+		return getPlayerLookVec(player.getYRot(), player.getXRot());
 	}
 
 	public static HitResult getHitResult(double radius) {
-		return getHitResult(mc.player, false, mc.player.getYaw(), mc.player.getPitch(), radius);
+		return getHitResult(mc.player, false, mc.player.getYRot(), mc.player.getXRot(), radius);
 	}
 
-	public static HitResult getHitResult(PlayerEntity entity, boolean ignoreInvisibles, float yaw, float pitch, double distance) {
-		if (entity == null || mc.world == null) return null;
+	public static HitResult getHitResult(Player entity, boolean ignoreInvisibles, float yaw, float pitch, double distance) {
+		if (entity == null || mc.level == null) return null;
 
 		double d = distance;
-		Vec3d cameraPosVec = entity.getCameraPosVec(RenderUtils.tickProgress());
-		Vec3d rotationVec = getPlayerLookVec(yaw, pitch);
-		Vec3d range = cameraPosVec.add(rotationVec.x * d, rotationVec.y * d, rotationVec.z * d);
+		Vec3 cameraPosVec = entity.getEyePosition(RenderUtils.tickProgress());
+		Vec3 rotationVec = getPlayerLookVec(yaw, pitch);
+		Vec3 range = cameraPosVec.add(rotationVec.x * d, rotationVec.y * d, rotationVec.z * d);
 
-		HitResult result = mc.world.raycast(new RaycastContext(cameraPosVec, range, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, entity));
+		HitResult result = mc.level.clip(new ClipContext(cameraPosVec, range, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, entity));
 
 		double e = d * d;
 		d = distance;
 
 		if (result != null) {
-			e = result.getPos().squaredDistanceTo(cameraPosVec);
+			e = result.getLocation().distanceToSqr(cameraPosVec);
 		}
 
-		Vec3d vec3d3 = cameraPosVec.add(rotationVec.x * d, rotationVec.y * d, rotationVec.z * d);
-		Box box = entity.getBoundingBox().stretch(rotationVec.multiply(d)).expand(1.0, 1.0, 1.0);
+		Vec3 vec3d3 = cameraPosVec.add(rotationVec.x * d, rotationVec.y * d, rotationVec.z * d);
+		AABB box = entity.getBoundingBox().expandTowards(rotationVec.scale(d)).inflate(1.0, 1.0, 1.0);
 
-		EntityHitResult entityHitResult = ProjectileUtil.raycast(entity, cameraPosVec, vec3d3, box, (entityx) ->
-				!entityx.isSpectator() && entityx.canHit() && (!entityx.isInvisible() || !ignoreInvisibles), e);
+		EntityHitResult entityHitResult = ProjectileUtil.getEntityHitResult(entity, cameraPosVec, vec3d3, box, (entityx) ->
+				!entityx.isSpectator() && entityx.isPickable() && (!entityx.isInvisible() || !ignoreInvisibles), e);
 
 		if (entityHitResult != null) {
-			Vec3d vec3d4 = entityHitResult.getPos();
-			double g = cameraPosVec.squaredDistanceTo(vec3d4);
+			Vec3 vec3d4 = entityHitResult.getLocation();
+			double g = cameraPosVec.distanceToSqr(vec3d4);
 
 			if ((distance > distance && g > Math.pow(distance, 2)) || (g < e || result == null)) {
 				result = g > Math.pow(distance, 2)
-						? BlockHitResult.createMissed(vec3d4, Direction.getFacing(rotationVec.x, rotationVec.y, rotationVec.z), BlockPos.ofFloored(vec3d4))
+						? BlockHitResult.miss(vec3d4, Direction.getApproximateNearest(rotationVec.x, rotationVec.y, rotationVec.z), BlockPos.containing(vec3d4))
 						: entityHitResult;
 			}
 		}
@@ -134,34 +137,34 @@ public final class WorldUtils {
 
 
 	public static void placeBlock(BlockHitResult blockHit, boolean swingHand) {
-		ActionResult result = mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, blockHit);
-		if (result.isAccepted() && swingHand) mc.player.swingHand(Hand.MAIN_HAND);
+		InteractionResult result = mc.gameMode.useItemOn(mc.player, InteractionHand.MAIN_HAND, blockHit);
+		if (result.consumesAction() && swingHand) mc.player.swing(InteractionHand.MAIN_HAND);
 	}
 
-	public static Stream<WorldChunk> getLoadedChunks() {
-		int radius = Math.max(2, mc.options.getClampedViewDistance()) + 3;
+	public static Stream<LevelChunk> getLoadedChunks() {
+		int radius = Math.max(2, mc.options.getEffectiveRenderDistance()) + 3;
 		int diameter = radius * 2 + 1;
 
-		ChunkPos center = mc.player.getChunkPos();
-		ChunkPos min = new ChunkPos(center.x - radius, center.z - radius);
-		ChunkPos max = new ChunkPos(center.x + radius, center.z + radius);
+		ChunkPos center = mc.player.chunkPosition();
+		ChunkPos min = new ChunkPos(center.x() - radius, center.z() - radius);
+		ChunkPos max = new ChunkPos(center.x() + radius, center.z() + radius);
 
 		return Stream.iterate(min, pos -> {
-					int x = pos.x;
-					int z = pos.z;
+					int x = pos.x();
+					int z = pos.z();
 					x++;
-					if (x > max.x) {
-						x = min.x;
+					if (x > max.x()) {
+						x = min.x();
 						z++;
 					}
-					if (z > max.z)
+					if (z > max.z())
 						throw new IllegalStateException("Stream limit didn't work.");
 
 					return new ChunkPos(x, z);
 
 				}).limit((long) diameter * diameter)
-				.filter(c -> mc.world.isChunkLoaded(c.x, c.z))
-				.map(c -> mc.world.getChunk(c.x, c.z)).filter(Objects::nonNull);
+				.filter(c -> mc.level.hasChunk(c.x(), c.z()))
+				.map(c -> mc.level.getChunk(c.x(), c.z())).filter(Objects::nonNull);
 	}
 
     /*
@@ -172,22 +175,22 @@ public final class WorldUtils {
                 SOUTH
      */
 
-	public static boolean isShieldFacingAway(PlayerEntity player) {
+	public static boolean isShieldFacingAway(Player player) {
 		if (mc.player != null && player != null) {
-			Vec3d playerPos = mc.player.getEntityPos();
-			Vec3d targetPos = player.getEntityPos();
+			Vec3 playerPos = mc.player.position();
+			Vec3 targetPos = player.position();
 
-			Vec3d directionToPlayer = playerPos.subtract(targetPos).normalize();
+			Vec3 directionToPlayer = playerPos.subtract(targetPos).normalize();
 
-			float yaw = player.getYaw();
-			float pitch = player.getPitch();
-			Vec3d facingDirection = new Vec3d(
+			float yaw = player.getYRot();
+			float pitch = player.getXRot();
+			Vec3 facingDirection = new Vec3(
 					-Math.sin(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)),
 					-Math.sin(Math.toRadians(pitch)),
 					Math.cos(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch))
 			).normalize();
 
-			double dotProduct = facingDirection.dotProduct(directionToPlayer);
+			double dotProduct = facingDirection.dot(directionToPlayer);
 
 			return dotProduct < 0;
 		}
@@ -195,11 +198,11 @@ public final class WorldUtils {
 	}
 
 	public static boolean isSword(ItemStack itemStack) {
-		return itemStack.isIn(ItemTags.SWORDS);
+		return itemStack.is(ItemTags.SWORDS);
 	}
 
 	public static boolean isAxe(ItemStack itemStack) {
-		return itemStack.isIn(ItemTags.AXES);
+		return itemStack.is(ItemTags.AXES);
 	}
 
 	public static boolean isWeapon(ItemStack itemStack) {
@@ -208,19 +211,19 @@ public final class WorldUtils {
 
 	public static boolean isTool(ItemStack itemStack) {
 		return isWeapon(itemStack)
-				|| itemStack.isIn(ItemTags.PICKAXES)
-				|| itemStack.isIn(ItemTags.SHOVELS)
-				|| itemStack.isIn(ItemTags.HOES);
+				|| itemStack.is(ItemTags.PICKAXES)
+				|| itemStack.is(ItemTags.SHOVELS)
+				|| itemStack.is(ItemTags.HOES);
 	}
 
-	public static boolean isCrit(PlayerEntity player, Entity target) {
-		return player.getAttackCooldownProgress(0.5F) > 0.9F && player.fallDistance > 0.0F && !player.isOnGround() && !player.isClimbing() && !player.isSubmergedInWater() && !player.hasStatusEffect(StatusEffects.BLINDNESS) && target instanceof LivingEntity;
+	public static boolean isCrit(Player player, Entity target) {
+		return player.getAttackStrengthScale(0.5F) > 0.9F && player.fallDistance > 0.0F && !player.onGround() && !player.onClimbable() && !player.isUnderWater() && !player.hasEffect(MobEffects.BLINDNESS) && target instanceof LivingEntity;
 	}
 
 	public static void hitEntity(Entity entity, boolean swingHand) {
-		mc.interactionManager.attackEntity(mc.player, entity);
+		mc.gameMode.attack(mc.player, entity);
 
 		if (swingHand)
-			mc.player.swingHand(Hand.MAIN_HAND);
+			mc.player.swing(InteractionHand.MAIN_HAND);
 	}
 }

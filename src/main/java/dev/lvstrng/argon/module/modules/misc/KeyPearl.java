@@ -9,9 +9,9 @@ import dev.lvstrng.argon.module.setting.NumberSetting;
 import dev.lvstrng.argon.utils.EncryptedString;
 import dev.lvstrng.argon.utils.InventoryUtils;
 import dev.lvstrng.argon.utils.KeyUtils;
-import net.minecraft.item.Items;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Hand;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.Items;
 import org.lwjgl.glfw.GLFW;
 
 public final class KeyPearl extends Module implements TickListener {
@@ -44,7 +44,7 @@ public final class KeyPearl extends Module implements TickListener {
 
     @Override
     public void onTick() {
-        if(mc.currentScreen != null)
+        if(mc.gui.screen() != null)
             return;
 
         if(KeyUtils.isKeyPressed(activateKey.getKey())) {
@@ -63,9 +63,9 @@ public final class KeyPearl extends Module implements TickListener {
             }
 
             if(!hasActivated) {
-                ActionResult result = mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
-                if (result.isAccepted())
-                    mc.player.swingHand(Hand.MAIN_HAND);
+                InteractionResult result = mc.gameMode.useItem(mc.player, InteractionHand.MAIN_HAND);
+                if (result.consumesAction())
+                    mc.player.swing(InteractionHand.MAIN_HAND);
 
                 hasActivated = true;
             }

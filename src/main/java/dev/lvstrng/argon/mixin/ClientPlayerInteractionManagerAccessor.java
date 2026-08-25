@@ -1,11 +1,11 @@
 package dev.lvstrng.argon.mixin;
 
-import net.minecraft.client.network.ClientPlayerInteractionManager;
+import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
-@Mixin(ClientPlayerInteractionManager.class)
+@Mixin(MultiPlayerGameMode.class)
 public interface ClientPlayerInteractionManagerAccessor {
-	@Invoker("syncSelectedSlot")
+	@Invoker("ensureHasSentCarriedItem")
 	void syncSlot();
 }

@@ -4,20 +4,20 @@ import dev.lvstrng.argon.Argon;
 import dev.lvstrng.argon.module.modules.render.NoBounce;
 import dev.lvstrng.argon.utils.CrystalUtils;
 import dev.lvstrng.argon.utils.RenderUtils;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.EndCrystalItem;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.ItemUsageContext;
-import net.minecraft.item.Items;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.RaycastContext;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.EndCrystalItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -30,12 +30,12 @@ import static dev.lvstrng.argon.Argon.mc;
 public class EndCrystalItemMixin {
 
 	@Unique
-	private Vec3d getPlayerLookVec(PlayerEntity p) {
+	private Vec3 getPlayerLookVec(Player p) {
 		return RenderUtils.getPlayerLookVec(p);
 	}
 
 	@Unique
-	private Vec3d getClientLookVec() {
+	private Vec3 getClientLookVec() {
 		assert mc.player != null;
 		return getPlayerLookVec(mc.player);
 	}
@@ -47,36 +47,36 @@ public class EndCrystalItemMixin {
 
 	@Unique
 	private BlockState getBlockState(BlockPos p) {
-		return mc.world.getBlockState(p);
+		return mc.level.getBlockState(p);
 	}
 
 	@Unique
 	private boolean canPlaceCrystalServer(BlockPos blockPos) {
-		BlockState blockState = mc.world.getBlockState(blockPos);
-		if (!blockState.isOf(Blocks.OBSIDIAN) && !blockState.isOf(Blocks.BEDROCK))
+		BlockState blockState = mc.level.getBlockState(blockPos);
+		if (!blockState.is(Blocks.OBSIDIAN) && !blockState.is(Blocks.BEDROCK))
 			return false;
 		return CrystalUtils.canPlaceCrystalClientAssumeObsidian(blockPos);
 	}
 
-	@Inject(method = "useOnBlock", at = @At("HEAD"))
-	private void onUse(ItemUsageContext context, CallbackInfoReturnable<ActionResult> cir) {
+	@Inject(method = "useOn", at = @At("HEAD"))
+	private void onUse(UseOnContext context, CallbackInfoReturnable<InteractionResult> cir) {
 		NoBounce noBounce = Argon.INSTANCE.getModuleManager().getModule(NoBounce.class);
 		if (noBounce.isEnabled()) {
 			if (Argon.INSTANCE != null && mc.player != null) {
-				ItemStack mainHandStack = mc.player.getMainHandStack();
+				ItemStack mainHandStack = mc.player.getMainHandItem();
 
-				if (mainHandStack.isOf(Items.END_CRYSTAL)) {
-					Vec3d e = mc.player.getEyePos();
+				if (mainHandStack.is(Items.END_CRYSTAL)) {
+					Vec3 e = mc.player.getEyePosition();
 
-					BlockHitResult blockHit = mc.world.raycast(new RaycastContext(e, e.add(getClientLookVec().multiply(4.5)), RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, mc.player));
+					BlockHitResult blockHit = mc.level.clip(new ClipContext(e, e.add(getClientLookVec().scale(4.5)), ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, mc.player));
 					if (isBlock(Blocks.OBSIDIAN, blockHit.getBlockPos()) || isBlock(Blocks.BEDROCK, blockHit.getBlockPos())) {
-						HitResult hitResult = mc.crosshairTarget;
+						HitResult hitResult = mc.hitResult;
 
 						if (hitResult instanceof BlockHitResult blockHit2) {
 							BlockPos pos = blockHit2.getBlockPos();
 
 							if (canPlaceCrystalServer(pos))
-								context.getStack().decrement(-1);
+								context.getItemInHand().shrink(-1);
 						}
 					}
 				}

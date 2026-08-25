@@ -7,16 +7,16 @@ import dev.lvstrng.argon.module.Module;
 import dev.lvstrng.argon.module.setting.BooleanSetting;
 import dev.lvstrng.argon.module.setting.NumberSetting;
 import dev.lvstrng.argon.utils.*;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.PlayerSkinDrawer;
-import net.minecraft.client.network.PlayerListEntry;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
-import net.minecraft.util.Hand;
-import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix3x2fStack;
 
 import java.awt.*;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.PlayerFaceExtractor;
+import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.network.protocol.game.ServerboundInteractPacket;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
 
 public final class TargetHud extends Module implements HudListener, PacketSendListener {
 	private final NumberSetting xCoord = new NumberSetting(EncryptedString.of("X"), 0, 1920, 500, 1);
@@ -51,18 +51,18 @@ public final class TargetHud extends Module implements HudListener, PacketSendLi
 
 	@Override
 	public void onRenderHud(HudEvent event) {
-		DrawContext context = event.context;
+		GuiGraphicsExtractor context = event.context;
 
 		int x = xCoord.getValueInt();
 		int y = yCoord.getValueInt();
 
 		RenderUtils.unscaledProjection(context);
 		if ((!hudTimeout.getValue() || (System.currentTimeMillis() - lastAttackTime <= timeout)) &&
-				mc.player.getAttacking() != null && mc.player.getAttacking() instanceof PlayerEntity player && player.isAlive()) {
-			animation = RenderUtils.fast(animation, mc.player.getAttacking() instanceof PlayerEntity player1 && player1.isAlive() ? 0 : 1, 15f);
+				mc.player.getLastHurtMob() != null && mc.player.getLastHurtMob() instanceof Player player && player.isAlive()) {
+			animation = RenderUtils.fast(animation, mc.player.getLastHurtMob() instanceof Player player1 && player1.isAlive() ? 0 : 1, 15f);
 
-			PlayerListEntry entry = mc.getNetworkHandler().getPlayerListEntry(player.getUuid());
-			Matrix3x2fStack matrices = context.getMatrices();
+			PlayerInfo entry = mc.getConnection().getPlayerInfo(player.getUUID());
+			Matrix3x2fStack matrices = context.pose();
 			matrices.pushMatrix();
 			matrices.scaleAround(Math.max(0.0f, 1.0f - animation), 1.0f, x + 170.0f, y + 100.0f);
 
@@ -95,7 +95,7 @@ public final class TargetHud extends Module implements HudListener, PacketSendLi
 
 			TextRenderer.drawString("Ping: " + entry.getLatency(), context, x + 5, y + 125, Color.WHITE.getRGB());
 
-			PlayerSkinDrawer.draw(context, entry.getSkinTextures(), x + 3, y + 3, 20);
+			PlayerFaceExtractor.extractRenderState(context, entry.getSkin(), x + 3, y + 3, 20);
 
 			if (player.hurtTime != 0) {
 				int charOff1 = x + 125;
@@ -131,25 +131,10 @@ public final class TargetHud extends Module implements HudListener, PacketSendLi
 
 	@Override
 	public void onPacketSend(PacketSendListener.PacketSendEvent event) {
-		if (event.packet instanceof PlayerInteractEntityC2SPacket packet) {
-			packet.handle(new PlayerInteractEntityC2SPacket.Handler() {
-				@Override
-				public void interact(Hand hand) {
-
-				}
-
-				@Override
-				public void interactAt(Hand hand, Vec3d pos) {
-
-				}
-
-				@Override
-				public void attack() {
-					if (mc.targetedEntity instanceof PlayerEntity) {
-						lastAttackTime = System.currentTimeMillis();
-					}
-				}
-			});
+		if (event.packet instanceof ServerboundInteractPacket packet
+				&& packet.hand() == null && packet.location() == null
+				&& mc.crosshairPickEntity instanceof Player) {
+			lastAttackTime = System.currentTimeMillis();
 		}
 	}
 }

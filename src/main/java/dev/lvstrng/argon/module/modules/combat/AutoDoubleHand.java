@@ -7,19 +7,18 @@ import dev.lvstrng.argon.module.Module;
 import dev.lvstrng.argon.module.setting.BooleanSetting;
 import dev.lvstrng.argon.module.setting.NumberSetting;
 import dev.lvstrng.argon.utils.*;
-import net.minecraft.block.Blocks;
-import net.minecraft.entity.decoration.EndCrystalEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.Items;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.RaycastContext;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 
 public final class AutoDoubleHand extends Module implements HudListener {
 	private final BooleanSetting stopOnCrystal = new BooleanSetting(EncryptedString.of("Stop On Crystal"), false)
@@ -86,17 +85,17 @@ public final class AutoDoubleHand extends Module implements HudListener {
 			return;
 
 		double squaredDistance = distance.getValue() * distance.getValue();
-		PlayerInventory inventory = mc.player.getInventory();
+		Inventory inventory = mc.player.getInventory();
 
 		if (checkShield.getValue() && mc.player.isBlocking())
 			return;
 
-		if (mc.player.getOffHandStack().getItem() != Items.TOTEM_OF_UNDYING && onPop.getValue() && !offhandHasNoTotem) {
+		if (mc.player.getOffhandItem().getItem() != Items.TOTEM_OF_UNDYING && onPop.getValue() && !offhandHasNoTotem) {
 			offhandHasNoTotem = true;
 			InventoryUtils.selectItemFromHotbar(Items.TOTEM_OF_UNDYING);
 		}
 
-		if (mc.player.getOffHandStack().getItem() == Items.TOTEM_OF_UNDYING)
+		if (mc.player.getOffhandItem().getItem() == Items.TOTEM_OF_UNDYING)
 			offhandHasNoTotem = false;
 
 		if (mc.player.getHealth() <= health.getValue() && onHealth.getValue() && !belowHealth) {
@@ -113,29 +112,29 @@ public final class AutoDoubleHand extends Module implements HudListener {
 		if (mc.player.getHealth() > 19)
 			return;
 
-		if (!onGround.getValue() && mc.player.isOnGround())
+		if (!onGround.getValue() && mc.player.onGround())
 			return;
 
-		if (checkPlayers.getValue() && mc.world.getPlayers().parallelStream().filter(e -> e != mc.player).noneMatch(p -> mc.player.squaredDistanceTo(p) <= squaredDistance))
+		if (checkPlayers.getValue() && mc.level.players().parallelStream().filter(e -> e != mc.player).noneMatch(p -> mc.player.distanceToSqr(p) <= squaredDistance))
 			return;
 
 		double above = activatesAbove.getValue();
 		for (int floor = (int) Math.floor(above), i = 1; i <= floor; i++) {
-			if (!mc.world.getBlockState(mc.player.getBlockPos().add(0, -i, 0)).isAir())
+			if (!mc.level.getBlockState(mc.player.blockPosition().offset(0, -i, 0)).isAir())
 				return;
 		}
 
-		Vec3d playerPos = mc.player.getEntityPos();
+		Vec3 playerPos = mc.player.position();
 		BlockPos playerBlockPos = new BlockPos((int) playerPos.x, (int) playerPos.y - (int) above, (int) playerPos.z);
-		if (!mc.world.getBlockState(new BlockPos(playerBlockPos)).isAir())
+		if (!mc.level.getBlockState(new BlockPos(playerBlockPos)).isAir())
 			return;
 
-		List<EndCrystalEntity> crystals = nearbyCrystals();
-		ArrayList<Vec3d> pos = new ArrayList<>();
-		crystals.forEach(e -> pos.add(e.getEntityPos()));
+		List<EndCrystal> crystals = nearbyCrystals();
+		ArrayList<Vec3> pos = new ArrayList<>();
+		crystals.forEach(e -> pos.add(e.position()));
 		if (predictCrystals.getValue()) {
-			Stream<BlockPos> s = BlockUtils.getAllInBoxStream(mc.player.getBlockPos().add(-6, -8, -6), mc.player.getBlockPos().add(6, 2, 6))
-					.filter(e -> mc.world.getBlockState(e).getBlock() == Blocks.OBSIDIAN || mc.world.getBlockState(e).getBlock() == Blocks.BEDROCK)
+			Stream<BlockPos> s = BlockUtils.getAllInBoxStream(mc.player.blockPosition().offset(-6, -8, -6), mc.player.blockPosition().offset(6, 2, 6))
+					.filter(e -> mc.level.getBlockState(e).getBlock() == Blocks.OBSIDIAN || mc.level.getBlockState(e).getBlock() == Blocks.BEDROCK)
 					.filter(CrystalUtils::canPlaceCrystalClient);
 
 			if (checkAim.getValue()) {
@@ -144,10 +143,10 @@ public final class AutoDoubleHand extends Module implements HudListener {
 					s = s.filter(this::arePeopleAimingAtBlockAndHoldingCrystals);
 				else s = s.filter(this::arePeopleAimingAtBlock);
 			}
-			s.forEachOrdered(e -> pos.add(Vec3d.ofBottomCenter(e).add(0, 1, 0)));
+			s.forEachOrdered(e -> pos.add(Vec3.atBottomCenterOf(e).add(0, 1, 0)));
 		}
 
-		for (Vec3d crys : pos) {
+		for (Vec3 crys : pos) {
 			double damage = DamageUtils.crystalDamage(mc.player, crys);
 
 			if (damage >= mc.player.getHealth() + mc.player.getAbsorptionAmount()) {
@@ -157,29 +156,29 @@ public final class AutoDoubleHand extends Module implements HudListener {
 		}
 	}
 
-	private List<EndCrystalEntity> nearbyCrystals() {
-		Vec3d pos = mc.player.getEntityPos();
-		return mc.world.getEntitiesByClass(EndCrystalEntity.class, new Box(pos.add(-6.0, -6.0, -6.0), pos.add(6.0, 6.0, 6.0)), e -> true);
+	private List<EndCrystal> nearbyCrystals() {
+		Vec3 pos = mc.player.position();
+		return mc.level.getEntitiesOfClass(EndCrystal.class, new AABB(pos.add(-6.0, -6.0, -6.0), pos.add(6.0, 6.0, 6.0)), e -> true);
 	}
 
 	private boolean arePeopleAimingAtBlock(final BlockPos block) {
-		final Vec3d[] eyesPos = new Vec3d[1];
+		final Vec3[] eyesPos = new Vec3[1];
 		final BlockHitResult[] hitResult = new BlockHitResult[1];
 
-		return mc.world.getPlayers().parallelStream().filter(e -> e != mc.player).anyMatch(e -> {
+		return mc.level.players().parallelStream().filter(e -> e != mc.player).anyMatch(e -> {
 			eyesPos[0] = RotationUtils.getEyesPos(e);
-			hitResult[0] = mc.world.raycast(new RaycastContext(eyesPos[0], eyesPos[0].add(RotationUtils.getPlayerLookVec(e).multiply(4.5)), RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, e));
+			hitResult[0] = mc.level.clip(new ClipContext(eyesPos[0], eyesPos[0].add(RotationUtils.getPlayerLookVec(e).scale(4.5)), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, e));
 			return hitResult[0] != null && hitResult[0].getBlockPos().equals(block);
 		});
 	}
 
 	private boolean arePeopleAimingAtBlockAndHoldingCrystals(final BlockPos block) {
-		final Vec3d[] eyesPos = new Vec3d[1];
+		final Vec3[] eyesPos = new Vec3[1];
 		final BlockHitResult[] hitResult = new BlockHitResult[1];
 
-		return mc.world.getPlayers().parallelStream().filter(e -> e != mc.player).filter(e -> e.isHolding(Items.END_CRYSTAL)).anyMatch(e -> {
+		return mc.level.players().parallelStream().filter(e -> e != mc.player).filter(e -> e.isHolding(Items.END_CRYSTAL)).anyMatch(e -> {
 			eyesPos[0] = RotationUtils.getEyesPos(e);
-			hitResult[0] = mc.world.raycast(new RaycastContext(eyesPos[0], eyesPos[0].add(RotationUtils.getPlayerLookVec(e).multiply(4.5)), RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, e));
+			hitResult[0] = mc.level.clip(new ClipContext(eyesPos[0], eyesPos[0].add(RotationUtils.getPlayerLookVec(e).scale(4.5)), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, e));
 
 			return hitResult[0] != null && hitResult[0].getBlockPos().equals(block);
 		});

@@ -7,10 +7,10 @@ import dev.lvstrng.argon.module.Module;
 import dev.lvstrng.argon.module.setting.BooleanSetting;
 import dev.lvstrng.argon.module.setting.NumberSetting;
 import dev.lvstrng.argon.utils.EncryptedString;
-import net.minecraft.client.gui.screen.ingame.InventoryScreen;
-import net.minecraft.item.Items;
-import net.minecraft.screen.slot.Slot;
-import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.Items;
 
 public final class HoverTotem extends Module implements TickListener {
 	private final NumberSetting delay = new NumberSetting(EncryptedString.of("Delay"), 0, 20, 0, 1);
@@ -45,36 +45,36 @@ public final class HoverTotem extends Module implements TickListener {
 
 	@Override
 	public void onTick() {
-		if (mc.currentScreen instanceof InventoryScreen inv) {
-			Slot hoveredSlot = ((HandledScreenMixin) inv).getFocusedSlot();
+		if (mc.gui.screen() instanceof InventoryScreen inv) {
+			Slot hoveredSlot = ((HandledScreenMixin) inv).getHoveredSlot();
 
 			if (autoSwitch.getValue())
 				mc.player.getInventory().setSelectedSlot(slot.getValueInt() - 1);
 
 			if (hoveredSlot != null) {
-				int slot = hoveredSlot.getIndex();
+				int slot = hoveredSlot.getContainerSlot();
 
 				if (slot > 35)
 					return;
 
 				int totem = this.slot.getValueInt() - 1;
 
-				if (hoveredSlot.getStack().getItem() == Items.TOTEM_OF_UNDYING) {
-					if (hotbar.getValue() && mc.player.getInventory().getStack(totem).getItem() != Items.TOTEM_OF_UNDYING) {
+				if (hoveredSlot.getItem().getItem() == Items.TOTEM_OF_UNDYING) {
+					if (hotbar.getValue() && mc.player.getInventory().getItem(totem).getItem() != Items.TOTEM_OF_UNDYING) {
 						if (clock > 0) {
 							clock--;
 							return;
 						}
 
-						mc.interactionManager.clickSlot(inv.getScreenHandler().syncId, slot, totem, SlotActionType.SWAP, mc.player);
+						mc.gameMode.handleContainerInput(inv.getMenu().containerId, slot, totem, ContainerInput.SWAP, mc.player);
 						clock = delay.getValueInt();
-					} else if (!mc.player.getOffHandStack().isOf(Items.TOTEM_OF_UNDYING)) {
+					} else if (!mc.player.getOffhandItem().is(Items.TOTEM_OF_UNDYING)) {
 						if (clock > 0) {
 							clock--;
 							return;
 						}
 
-						mc.interactionManager.clickSlot(inv.getScreenHandler().syncId, slot, 40, SlotActionType.SWAP, mc.player);
+						mc.gameMode.handleContainerInput(inv.getMenu().containerId, slot, 40, ContainerInput.SWAP, mc.player);
 						clock = delay.getValueInt();
 					}
 				}

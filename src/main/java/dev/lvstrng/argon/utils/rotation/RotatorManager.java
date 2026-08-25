@@ -4,9 +4,8 @@ import dev.lvstrng.argon.Argon;
 import dev.lvstrng.argon.event.EventManager;
 import dev.lvstrng.argon.event.events.*;
 import dev.lvstrng.argon.utils.RotationUtils;
-
-import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
-import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
+import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
+import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 
 import static dev.lvstrng.argon.Argon.mc;
 
@@ -78,18 +77,18 @@ public final class RotatorManager implements PacketSendListener, BlockBreakingLi
 	}
 
 	private void resetClientRotation() {
-		mc.player.setYaw(clientYaw);
-		mc.player.setPitch(clientPitch);
+		mc.player.setYRot(clientYaw);
+		mc.player.setXRot(clientPitch);
 
 		resetRotation = false;
 	}
 
 	public void setClientRotation(Rotation rotation) {
-		this.clientYaw = mc.player.getYaw();
-		this.clientPitch = mc.player.getPitch();
+		this.clientYaw = mc.player.getYRot();
+		this.clientPitch = mc.player.getXRot();
 
-		mc.player.setYaw((float) rotation.yaw());
-		mc.player.setPitch((float) rotation.pitch());
+		mc.player.setYRot((float) rotation.yaw());
+		mc.player.setXRot((float) rotation.pitch());
 
 		resetRotation = true;
 	}
@@ -119,9 +118,9 @@ public final class RotatorManager implements PacketSendListener, BlockBreakingLi
 
 	@Override
 	public void onPacketSend(PacketSendEvent event) {
-		if (event.packet instanceof PlayerMoveC2SPacket packet) {
-			serverYaw = packet.getYaw(serverYaw);
-			serverPitch = packet.getPitch(serverPitch);
+		if (event.packet instanceof ServerboundMovePlayerPacket packet) {
+			serverYaw = packet.getYRot(serverYaw);
+			serverPitch = packet.getXRot(serverPitch);
 		}
 	}
 
@@ -144,7 +143,7 @@ public final class RotatorManager implements PacketSendListener, BlockBreakingLi
 
 		if (rotateBack) {
 			Rotation serverRot = new Rotation(serverYaw, serverPitch);
-			Rotation clientRot = new Rotation(mc.player.getYaw(), mc.player.getPitch());
+			Rotation clientRot = new Rotation(mc.player.getYRot(), mc.player.getXRot());
 
 			if (RotationUtils.getTotalDiff(serverRot, clientRot) > 1) {
 				Rotation smoothRotation = RotationUtils.getSmoothRotation(serverRot, clientRot, 0.2);
@@ -159,9 +158,9 @@ public final class RotatorManager implements PacketSendListener, BlockBreakingLi
 
 	@Override
 	public void onPacketReceive(PacketReceiveEvent event) {
-		if (event.packet instanceof PlayerPositionLookS2CPacket packet) {
-			serverYaw = packet.change().yaw();
-			serverPitch = packet.change().pitch();
+		if (event.packet instanceof ClientboundPlayerPositionPacket packet) {
+			serverYaw = packet.change().yRot();
+			serverPitch = packet.change().xRot();
 		}
 	}
 }

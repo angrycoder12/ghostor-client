@@ -7,10 +7,10 @@ import dev.lvstrng.argon.module.setting.Setting;
 import dev.lvstrng.argon.utils.ColorUtils;
 import dev.lvstrng.argon.utils.TextRenderer;
 import dev.lvstrng.argon.utils.Utils;
-import net.minecraft.client.gui.DrawContext;
 import org.lwjgl.glfw.GLFW;
 
 import java.awt.*;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 public final class CheckBox extends RenderableSetting {
 	private final BooleanSetting setting;
@@ -22,7 +22,7 @@ public final class CheckBox extends RenderableSetting {
 	}
 
 	@Override
-	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+	public void render(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
 		super.render(context, mouseX, mouseY, delta);
 
 		int nameOffset = parentX() + 20;

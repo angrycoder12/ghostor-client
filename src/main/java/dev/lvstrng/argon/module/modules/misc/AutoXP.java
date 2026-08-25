@@ -9,9 +9,9 @@ import dev.lvstrng.argon.module.setting.NumberSetting;
 import dev.lvstrng.argon.utils.EncryptedString;
 import dev.lvstrng.argon.utils.MathUtils;
 import dev.lvstrng.argon.utils.MouseSimulation;
-import net.minecraft.item.Items;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Hand;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.Items;
 import org.lwjgl.glfw.GLFW;
 
 public final class AutoXP extends Module implements TickListener, ItemUseListener {
@@ -48,17 +48,17 @@ public final class AutoXP extends Module implements TickListener, ItemUseListene
 
 	@Override
 	public void onTick() {
-		if (mc.currentScreen != null)
+		if (mc.gui.screen() != null)
 			return;
 
 		boolean dontThrow = clock != 0;
 
 		int randomInt = MathUtils.randomInt(1, 100);
 
-		if (mc.player.getMainHandStack().getItem() != Items.EXPERIENCE_BOTTLE)
+		if (mc.player.getMainHandItem().getItem() != Items.EXPERIENCE_BOTTLE)
 			return;
 
-		if (GLFW.glfwGetMouseButton(mc.getWindow().getHandle(), GLFW.GLFW_MOUSE_BUTTON_RIGHT) != GLFW.GLFW_PRESS)
+		if (GLFW.glfwGetMouseButton(mc.getWindow().handle(), GLFW.GLFW_MOUSE_BUTTON_RIGHT) != GLFW.GLFW_PRESS)
 			return;
 
 		if (dontThrow)
@@ -68,8 +68,8 @@ public final class AutoXP extends Module implements TickListener, ItemUseListene
 			if (clickSimulation.getValue())
 				MouseSimulation.mouseClick(GLFW.GLFW_MOUSE_BUTTON_RIGHT);
 
-			ActionResult result = mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
-			if (result.isAccepted()) mc.player.swingHand(Hand.MAIN_HAND);
+			InteractionResult result = mc.gameMode.useItem(mc.player, InteractionHand.MAIN_HAND);
+			if (result.consumesAction()) mc.player.swing(InteractionHand.MAIN_HAND);
 
 			clock = delay.getValueInt();
 		}
@@ -77,7 +77,7 @@ public final class AutoXP extends Module implements TickListener, ItemUseListene
 
 	@Override
 	public void onItemUse(ItemUseEvent event) {
-		if (mc.player.getMainHandStack().getItem() == Items.EXPERIENCE_BOTTLE) {
+		if (mc.player.getMainHandItem().getItem() == Items.EXPERIENCE_BOTTLE) {
 			event.cancel();
 		}
 	}

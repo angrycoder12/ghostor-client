@@ -10,12 +10,12 @@ import dev.lvstrng.argon.module.setting.BooleanSetting;
 import dev.lvstrng.argon.module.setting.KeybindSetting;
 import dev.lvstrng.argon.module.setting.NumberSetting;
 import dev.lvstrng.argon.utils.*;
-import net.minecraft.block.Block;
-import net.minecraft.block.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import org.lwjgl.glfw.GLFW;
 
 public final class AutoHitCrystal extends Module implements TickListener, ItemUseListener, AttackListener {
@@ -69,22 +69,22 @@ public final class AutoHitCrystal extends Module implements TickListener, ItemUs
 	public void onTick() {
 		int randomNum = MathUtils.randomInt(1, 100);
 
-		if (mc.currentScreen != null)
+		if (mc.gui.screen() != null)
 			return;
 
 		if (KeyUtils.isKeyPressed(activateKey.getKey())) {
-			if(mc.crosshairTarget instanceof BlockHitResult hitResult && mc.crosshairTarget.getType() == HitResult.Type.BLOCK)
+			if(mc.hitResult instanceof BlockHitResult hitResult && mc.hitResult.getType() == HitResult.Type.BLOCK)
 				if(!active && !BlockUtils.canPlaceBlockClient(hitResult.getBlockPos()) && checkPlace.getValue())
 					return;
 
-			ItemStack mainHandStack = mc.player.getMainHandStack();
+			ItemStack mainHandStack = mc.player.getMainHandItem();
 
-			if (!(WorldUtils.isSword(mainHandStack) || (workWithTotem.getValue() && mainHandStack.isOf(Items.TOTEM_OF_UNDYING)) || workWithCrystal.getValue() && mainHandStack.isOf(Items.END_CRYSTAL)) && !active)
+			if (!(WorldUtils.isSword(mainHandStack) || (workWithTotem.getValue() && mainHandStack.is(Items.TOTEM_OF_UNDYING)) || workWithCrystal.getValue() && mainHandStack.is(Items.END_CRYSTAL)) && !active)
 				return;
-			else if(mc.crosshairTarget instanceof BlockHitResult hitResult && !active) {
+			else if(mc.hitResult instanceof BlockHitResult hitResult && !active) {
 				if(swordSwap.getValue()) {
-					if (mc.crosshairTarget.getType() == HitResult.Type.BLOCK) {
-						Block block = mc.world.getBlockState(hitResult.getBlockPos()).getBlock();
+					if (mc.hitResult.getType() == HitResult.Type.BLOCK) {
+						Block block = mc.level.getBlockState(hitResult.getBlockPos()).getBlock();
 
 						crystalling = block == Blocks.OBSIDIAN || block == Blocks.BEDROCK;
 					}
@@ -94,7 +94,7 @@ public final class AutoHitCrystal extends Module implements TickListener, ItemUs
 			active = true;
 
 			if (!crystalling) {
-				if (mc.crosshairTarget instanceof BlockHitResult hit) {
+				if (mc.hitResult instanceof BlockHitResult hit) {
 					if (hit.getType() == HitResult.Type.MISS)
 						return;
 
@@ -102,7 +102,7 @@ public final class AutoHitCrystal extends Module implements TickListener, ItemUs
 						if(BlockUtils.isBlock(hit.getBlockPos(), Blocks.RESPAWN_ANCHOR) && BlockUtils.isAnchorCharged(hit.getBlockPos()))
 							return;
 
-						mc.options.useKey.setPressed(false);
+						mc.options.keyUse.setDown(false);
 
 						if (!mc.player.isHolding(Items.OBSIDIAN)) {
 							if (switchClock > 0) {
@@ -165,8 +165,8 @@ public final class AutoHitCrystal extends Module implements TickListener, ItemUs
 
 	@Override
 	public void onItemUse(ItemUseEvent event) {
-		ItemStack mainHandStack = mc.player.getMainHandStack();
-		if ((mainHandStack.isOf(Items.END_CRYSTAL) || mainHandStack.isOf(Items.OBSIDIAN)) && GLFW.glfwGetMouseButton(mc.getWindow().getHandle(), GLFW.GLFW_MOUSE_BUTTON_RIGHT) != GLFW.GLFW_PRESS)
+		ItemStack mainHandStack = mc.player.getMainHandItem();
+		if ((mainHandStack.is(Items.END_CRYSTAL) || mainHandStack.is(Items.OBSIDIAN)) && GLFW.glfwGetMouseButton(mc.getWindow().handle(), GLFW.GLFW_MOUSE_BUTTON_RIGHT) != GLFW.GLFW_PRESS)
 			event.cancel();
 	}
 
@@ -180,7 +180,7 @@ public final class AutoHitCrystal extends Module implements TickListener, ItemUs
 
 	@Override
 	public void onAttack(AttackEvent event) {
-		if (mc.player.getMainHandStack().isOf(Items.END_CRYSTAL) && GLFW.glfwGetMouseButton(mc.getWindow().getHandle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS)
+		if (mc.player.getMainHandItem().is(Items.END_CRYSTAL) && GLFW.glfwGetMouseButton(mc.getWindow().handle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS)
 			event.cancel();
 	}
 }

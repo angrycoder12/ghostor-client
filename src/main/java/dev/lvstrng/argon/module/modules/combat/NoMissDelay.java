@@ -7,7 +7,7 @@ import dev.lvstrng.argon.module.Module;
 import dev.lvstrng.argon.module.setting.BooleanSetting;
 import dev.lvstrng.argon.utils.EncryptedString;
 import dev.lvstrng.argon.utils.WorldUtils;
-import net.minecraft.util.hit.HitResult;
+import net.minecraft.world.phys.HitResult;
 
 public final class NoMissDelay extends Module implements AttackListener, BlockBreakingListener {
 	private final BooleanSetting onlyWeapon = new BooleanSetting(EncryptedString.of("Only weapon"), true);
@@ -40,10 +40,10 @@ public final class NoMissDelay extends Module implements AttackListener, BlockBr
 
 	@Override
 	public void onAttack(AttackEvent event) {
-		if (onlyWeapon.getValue() && !WorldUtils.isWeapon(mc.player.getMainHandStack()))
+		if (onlyWeapon.getValue() && !WorldUtils.isWeapon(mc.player.getMainHandItem()))
 			return;
 
-		switch (mc.crosshairTarget.getType()) {
+		switch (mc.hitResult.getType()) {
 			case MISS -> {
 				if (air.getValue()) event.cancel();
 			}
@@ -55,10 +55,10 @@ public final class NoMissDelay extends Module implements AttackListener, BlockBr
 
 	@Override
 	public void onBlockBreaking(BlockBreakingEvent event) {
-		if (onlyWeapon.getValue() && !WorldUtils.isWeapon(mc.player.getMainHandStack()))
+		if (onlyWeapon.getValue() && !WorldUtils.isWeapon(mc.player.getMainHandItem()))
 			return;
 
-		if (mc.crosshairTarget.getType() == HitResult.Type.BLOCK) {
+		if (mc.hitResult.getType() == HitResult.Type.BLOCK) {
 			if (blocks.getValue()) event.cancel();
 		}
 	}
