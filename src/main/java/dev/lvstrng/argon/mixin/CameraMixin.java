@@ -2,9 +2,11 @@ package dev.lvstrng.argon.mixin;
 
 import dev.lvstrng.argon.event.EventManager;
 import dev.lvstrng.argon.event.events.CameraUpdateListener;
+import dev.lvstrng.argon.module.modules.misc.Freecam;
 import dev.lvstrng.argon.module.modules.misc.Scaffold;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -34,6 +36,14 @@ public abstract class CameraMixin {
 		if (minecraft.options.getCameraType().isFirstPerson()
 				&& Scaffold.shouldOverrideForwardCamera()) {
 			setRotation(Scaffold.forwardCameraYaw(), Scaffold.forwardCameraPitch());
+		}
+	}
+
+	@Inject(method = "extractRenderState", at = @At("RETURN"))
+	private void ghostor$disableFreecamSmartCulling(CameraRenderState cameraState,
+			float partialTick, CallbackInfo ci) {
+		if (Freecam.enabledInstance() != null) {
+			cameraState.smartCull = false;
 		}
 	}
 }

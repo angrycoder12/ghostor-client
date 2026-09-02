@@ -1,14 +1,11 @@
 package dev.lvstrng.argon.mixin;
 
 import dev.lvstrng.argon.Argon;
-import dev.lvstrng.argon.gui.components.MapTooltipComponent;
 import dev.lvstrng.argon.gui.components.ShulkerBoxTooltipComponent;
 import dev.lvstrng.argon.module.modules.render.NoBounce;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.saveddata.maps.MapId;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -24,23 +21,6 @@ public class ItemStackMixin {
 	private void ghostor$shulkerBoxTooltip(CallbackInfoReturnable<Optional<TooltipComponent>> cir) {
 		if (!cir.getReturnValue().isPresent()) {
 			cir.setReturnValue(ShulkerBoxTooltipComponent.create((ItemStack) (Object) this));
-		}
-	}
-
-	@Inject(method = "getTooltipImage", at = @At("RETURN"), cancellable = true)
-	private void ghostor$mapTooltip(CallbackInfoReturnable<Optional<TooltipComponent>> cir) {
-		if (cir.getReturnValue().isPresent()) {
-			return;
-		}
-
-		ItemStack stack = (ItemStack) (Object) this;
-		if (!stack.is(Items.FILLED_MAP) || !MapTooltipComponent.shouldShow()) {
-			return;
-		}
-
-		MapId mapId = stack.get(DataComponents.MAP_ID);
-		if (mapId != null) {
-			cir.setReturnValue(MapTooltipComponent.create(mapId));
 		}
 	}
 

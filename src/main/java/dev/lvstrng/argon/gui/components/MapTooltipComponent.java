@@ -9,8 +9,10 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.state.MapRenderState;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.saveddata.maps.MapId;
 import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
 
@@ -25,11 +27,9 @@ public final class MapTooltipComponent implements ClientTooltipComponent, Toolti
 	private static final float MAP_SCALE = 0.45F;
 
 	private final MapId mapId;
-	private final MapItemSavedData mapData;
 
-	private MapTooltipComponent(MapId mapId, MapItemSavedData mapData) {
+	private MapTooltipComponent(MapId mapId) {
 		this.mapId = mapId;
-		this.mapData = mapData;
 	}
 
 	public static void register() {
@@ -46,16 +46,15 @@ public final class MapTooltipComponent implements ClientTooltipComponent, Toolti
 		return module != null && module.isEnabled();
 	}
 
-	public static Optional<TooltipComponent> create(MapId mapId) {
-		Minecraft minecraft = Minecraft.getInstance();
-		if (minecraft.level == null) {
+	public static Optional<TooltipComponent> create(ItemStack stack) {
+		if (!shouldShow()) {
 			return Optional.empty();
 		}
 
-		MapItemSavedData mapData = minecraft.level.getMapData(mapId);
-		return mapData == null
+		MapId mapId = stack.get(DataComponents.MAP_ID);
+		return mapId == null
 				? Optional.empty()
-				: Optional.of(new MapTooltipComponent(mapId, mapData));
+				: Optional.of(new MapTooltipComponent(mapId));
 	}
 
 	@Override
@@ -72,6 +71,10 @@ public final class MapTooltipComponent implements ClientTooltipComponent, Toolti
 	public void extractImage(Font font, int x, int y, int width, int height, GuiGraphicsExtractor graphics) {
 		Minecraft minecraft = Minecraft.getInstance();
 		if (minecraft.level == null) {
+			return;
+		}
+		MapItemSavedData mapData = minecraft.level.getMapData(mapId);
+		if (mapData == null) {
 			return;
 		}
 

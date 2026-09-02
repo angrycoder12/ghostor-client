@@ -34,9 +34,15 @@ public final class GhostorTheme {
     public static final int RESIZE_HANDLE = 18;
     public static final int PANEL_MARGIN = 16;
     public static final int MAIN_MIN_WIDTH = 680;
-    public static final int MAIN_MIN_HEIGHT = 440;
+	public static final int MAIN_MIN_HEIGHT = 540;
     public static final int FRIENDS_MIN_WIDTH = 240;
     public static final int FRIENDS_MIN_HEIGHT = 300;
+    public static final int BLOCK_SELECTOR_MIN_WIDTH = 640;
+    public static final int BLOCK_SELECTOR_MIN_HEIGHT = 480;
+	public static final int CONFIG_MIN_WIDTH = 500;
+	public static final int CONFIG_MIN_HEIGHT = 390;
+	public static final int CONFIG_FORM_MIN_WIDTH = 380;
+	public static final int CONFIG_FORM_MIN_HEIGHT = 330;
 
     private GhostorTheme() {}
 

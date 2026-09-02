@@ -9,8 +9,9 @@ import dev.lvstrng.argon.module.Module;
 import dev.lvstrng.argon.module.setting.NumberSetting;
 import dev.lvstrng.argon.utils.EncryptedString;
 import net.minecraft.client.KeyMapping;
-import net.minecraft.client.multiplayer.ClientChunkCache;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
@@ -25,9 +26,8 @@ public final class Freecam extends Module implements TickListener, CameraUpdateL
 	public Vec3 oldPos;
 	public Vec3 pos;
 	private final Set<ChunkPos> retainedChunks = new HashSet<>();
-	private ClientChunkCache retainedCache;
 	private ClientLevel observedLevel;
-	private boolean retainingWorldSections;
+	private boolean retainingChunks;
 
 	public Freecam() {
 		super(EncryptedString.of("Freecam"),
@@ -44,11 +44,12 @@ public final class Freecam extends Module implements TickListener, CameraUpdateL
 	public void onEnable() {
 		eventManager.add(TickListener.class, this);
 		eventManager.add(CameraUpdateListener.class, this);
-		clearRetainedChunks(false);
+		discardRetainedChunks();
 		observedLevel = mc.level;
-		retainingWorldSections = mc.level != null && mc.player != null;
+		retainingChunks = mc.level != null && mc.player != null;
 		if (mc.level != null && mc.player != null) {
 			this.oldPos = this.pos = mc.player.getEyePosition();
+			mc.levelExtractor.allChanged();
 		}
 
 		super.onEnable();
@@ -58,9 +59,9 @@ public final class Freecam extends Module implements TickListener, CameraUpdateL
 	public void onDisable() {
 		eventManager.remove(TickListener.class, this);
 		eventManager.remove(CameraUpdateListener.class, this);
-		clearRetainedChunks(true);
+		retainingChunks = false;
+		releaseRetainedChunks();
 		observedLevel = null;
-		retainingWorldSections = false;
 		restoreSuppressedInput();
 
 		if (mc.level != null && mc.player != null) {
@@ -73,17 +74,18 @@ public final class Freecam extends Module implements TickListener, CameraUpdateL
 	@Override
 	public void onTick() {
 		if (mc.level == null || mc.player == null) {
-			clearRetainedChunks(false);
+			discardRetainedChunks();
 			observedLevel = null;
-			retainingWorldSections = false;
+			retainingChunks = false;
 			return;
 		}
 
 		if (observedLevel != mc.level) {
-			clearRetainedChunks(false);
+			discardRetainedChunks();
 			observedLevel = mc.level;
 			oldPos = pos = mc.player.getEyePosition();
-			retainingWorldSections = true;
+			retainingChunks = true;
+			mc.levelExtractor.allChanged();
 		}
 
 		if (mc.gui.screen() != null)
@@ -159,19 +161,21 @@ public final class Freecam extends Module implements TickListener, CameraUpdateL
 		event.setZ(Mth.lerp(tickDelta, oldPos.z, pos.z));
 	}
 
-	/** Called from the packet hook before vanilla drops the chunk and its light data. */
+	/** Called from the packet hook before vanilla processes a server-requested chunk unload. */
 	public boolean retainChunk(ChunkPos chunkPos) {
-		if (!isEnabled() || !retainingWorldSections || mc.level == null) {
+		if (!isEnabled() || !retainingChunks || mc.level == null || mc.level != observedLevel) {
 			return false;
 		}
 
-		ClientChunkCache cache = mc.level.getChunkSource();
-		if (retainedCache != null && retainedCache != cache) {
-			retainedChunks.clear();
-		}
-		retainedCache = cache;
 		retainedChunks.add(chunkPos);
 		return true;
+	}
+
+	/** Prevents a delayed unload from winning over a newer load for the same chunk. */
+	public void acceptChunkLoad(ChunkPos chunkPos) {
+		if (isEnabled() && retainingChunks && mc.level == observedLevel) {
+			retainedChunks.remove(chunkPos);
+		}
 	}
 
 	public static Freecam enabledInstance() {
@@ -183,30 +187,35 @@ public final class Freecam extends Module implements TickListener, CameraUpdateL
 		return freecam != null && freecam.isEnabled() ? freecam : null;
 	}
 
-	public static boolean shouldKeepRenderSections() {
-		Freecam freecam = enabledInstance();
-		return freecam != null && freecam.retainingWorldSections;
-	}
-
 	public static void onWorldChanged() {
 		Freecam freecam = enabledInstance();
 		if (freecam != null) {
-			freecam.clearRetainedChunks(false);
+			freecam.discardRetainedChunks();
 			freecam.observedLevel = null;
-			freecam.retainingWorldSections = false;
+			freecam.retainingChunks = false;
 			freecam.oldPos = freecam.pos = Vec3.ZERO;
 		}
 	}
 
-	private void clearRetainedChunks(boolean releaseCurrentWorld) {
-		ClientChunkCache current = mc.level == null ? null : mc.level.getChunkSource();
-		if (releaseCurrentWorld && retainedCache != null && retainedCache == current) {
-			for (ChunkPos chunkPos : Set.copyOf(retainedChunks)) {
-				retainedCache.drop(chunkPos);
-			}
-		}
+	private void releaseRetainedChunks() {
+		Set<ChunkPos> chunksToRelease = Set.copyOf(retainedChunks);
 		retainedChunks.clear();
-		retainedCache = null;
+
+		ClientPacketListener connection = mc.getConnection();
+		if (chunksToRelease.isEmpty() || connection == null || mc.level == null
+				|| mc.level != observedLevel || connection.getLevel() != observedLevel) {
+			return;
+		}
+
+		// Replay the delayed vanilla unloads instead of dropping only chunk data. This also
+		// performs vanilla's debug-render and lighting cleanup once retention ends.
+		for (ChunkPos chunkPos : chunksToRelease) {
+			connection.handleForgetLevelChunk(new ClientboundForgetLevelChunkPacket(chunkPos));
+		}
+	}
+
+	private void discardRetainedChunks() {
+		retainedChunks.clear();
 	}
 
 	private void restoreSuppressedInput() {

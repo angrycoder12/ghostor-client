@@ -5,7 +5,9 @@ import dev.lvstrng.argon.Argon;
 import dev.lvstrng.argon.event.EventManager;
 import dev.lvstrng.argon.event.events.*;
 import dev.lvstrng.argon.utils.MouseSimulation;
+import dev.lvstrng.argon.module.modules.combat.AutoGap;
 import dev.lvstrng.argon.module.modules.misc.Freecam;
+import dev.lvstrng.argon.module.modules.render.BlockESP;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import org.jetbrains.annotations.Nullable;
@@ -22,7 +24,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class MinecraftClientMixin {
 	@Inject(method = "setLevel", at = @At("HEAD"))
 	private void ghostor$clearFreecamWorldState(ClientLevel newLevel, CallbackInfo ci) {
+		AutoGap.onWorldChanged();
 		Freecam.onWorldChanged();
+		BlockESP.onWorldChanged();
 	}
 
 	@Shadow
@@ -88,6 +92,7 @@ public class MinecraftClientMixin {
 
 	@Inject(method = "close", at = @At("HEAD"))
 	private void onClose(CallbackInfo ci) {
-		Argon.INSTANCE.getProfileManager().saveProfile();
+		BlockESP.onClientClosing();
+		Argon.INSTANCE.getConfigManager().shutdown();
 	}
 }

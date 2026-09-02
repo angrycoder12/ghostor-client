@@ -2,6 +2,7 @@ package dev.lvstrng.argon.module.setting;
 
 import java.util.Arrays;
 import java.util.List;
+import dev.lvstrng.argon.config.ConfigManager;
 
 public final class ModeSetting<T extends Enum<T>> extends Setting<ModeSetting<T>> {
 	public int index;
@@ -21,15 +22,40 @@ public final class ModeSetting<T extends Enum<T>> extends Setting<ModeSetting<T>
 	}
 
 	public void setMode(T mode) {
-		index = possibleValues.indexOf(mode);
+		setModeIndex(possibleValues.indexOf(mode));
 	}
 
 	public void setModeIndex(int mode) {
-		index = mode;
+		int updated = mode >= 0 && mode < possibleValues.size() ? mode : originalValue;
+		if (index == updated) return;
+		index = updated;
+		ConfigManager.notifyChanged();
 	}
 
 	public int getModeIndex() {
 		return index;
+	}
+
+	public String getModeName() {
+		return getMode().name();
+	}
+
+	public boolean setModeName(String name) {
+		for (int value = 0; value < possibleValues.size(); value++) {
+			if (possibleValues.get(value).name().equals(name)) {
+				setModeIndex(value);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public boolean isValidModeName(String name) {
+		return possibleValues.stream().anyMatch(value -> value.name().equals(name));
+	}
+
+	public String getOriginalModeName() {
+		return possibleValues.get(originalValue).name();
 	}
 
 	public int getOriginalValue() {
@@ -37,9 +63,7 @@ public final class ModeSetting<T extends Enum<T>> extends Setting<ModeSetting<T>
 	}
 
 	public void cycle() {
-		if (index < possibleValues.size() - 1)
-			index++;
-		else index = 0;
+		setModeIndex(index < possibleValues.size() - 1 ? index + 1 : 0);
 	}
 
 	public boolean isMode(T mode) {

@@ -42,6 +42,10 @@ public final class GhostorIcons {
                 context.fill(x + 1, y + 7, x + 4, y + 9, c);
                 context.fill(x + 12, y + 7, x + 15, y + 9, c);
             }
+			case DISABLED -> {
+				context.outline(x + 2, y + 2, 12, 12, c);
+				diagonal(context, x + 3, y + 3, 11, 1, c);
+			}
         }
     }
 
@@ -59,6 +63,14 @@ public final class GhostorIcons {
         GhostorTheme.outline(context, x + 8, y + 10, x + 16, y + 16, color, 3);
         context.fill(x + 4, y + 14, x + 14, y + 16, c);
     }
+
+	public static void configs(GuiGraphicsExtractor context, int x, int y, Color color) {
+		int c = color.getRGB();
+		context.outline(x + 2, y + 2, 12, 13, c);
+		context.fill(x + 5, y + 5, x + 12, y + 7, c);
+		context.fill(x + 5, y + 9, x + 12, y + 11, c);
+		context.fill(x + 5, y + 13, x + 10, y + 15, c);
+	}
 
     public static void trash(GuiGraphicsExtractor context, int x, int y, Color color) {
         int c = color.getRGB();

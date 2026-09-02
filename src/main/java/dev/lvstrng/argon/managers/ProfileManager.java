@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev.lvstrng.argon.Argon;
 import dev.lvstrng.argon.module.Module;
+import dev.lvstrng.argon.module.modules.misc.ClientSpoof;
 import dev.lvstrng.argon.module.setting.*;
 
 import java.nio.file.Files;
@@ -48,8 +49,7 @@ public final class ProfileManager {
 					if (enabledJson == null || !enabledJson.isJsonPrimitive())
 						continue;
 
-					if (enabledJson.getAsBoolean())
-						module.setEnabled(true);
+					applyEnabledState(module, enabledJson.getAsBoolean());
 
 					for (Setting<?> setting : module.getSettings()) {
 						JsonElement settingJson = moduleConfig.get(String.valueOf(module.getSettings().indexOf(setting)));
@@ -77,6 +77,8 @@ public final class ProfileManager {
 								minMaxSetting.setMinValue(minValue);
 								minMaxSetting.setMaxValue(maxValue);
 							}
+						} else if (setting instanceof ColorSetting colorSetting) {
+							colorSetting.setArgb(settingJson.getAsInt());
 						}
 					}
 
@@ -98,8 +100,7 @@ public final class ProfileManager {
 					if (enabledJson == null || !enabledJson.isJsonPrimitive())
 						continue;
 
-					if (enabledJson.getAsBoolean())
-						module.setEnabled(true);
+					applyEnabledState(module, enabledJson.getAsBoolean());
 
 					for (Setting<?> setting : module.getSettings()) {
 						JsonElement settingJson = moduleConfig.get(String.valueOf(module.getSettings().indexOf(setting)));
@@ -127,6 +128,8 @@ public final class ProfileManager {
 								minMaxSetting.setMinValue(minValue);
 								minMaxSetting.setMaxValue(maxValue);
 							}
+						} else if (setting instanceof ColorSetting colorSetting) {
+							colorSetting.setArgb(settingJson.getAsInt());
 						}
 					}
 
@@ -134,6 +137,13 @@ public final class ProfileManager {
 			}
 		} catch (Exception ignored) {
 		}
+	}
+
+	private void applyEnabledState(Module module, boolean enabled) {
+		// Most Ghostor modules default off, so the legacy loader only had to apply
+		// true values. Client Spoof intentionally defaults on and therefore must also
+		// consume a saved false value instead of re-enabling on every startup.
+		if (enabled || module instanceof ClientSpoof) module.setEnabled(enabled);
 	}
 
 	public void saveProfile() {
@@ -167,6 +177,8 @@ public final class ProfileManager {
 							minMaxObject.addProperty("2", minMaxSetting.getMaxValue());
 
 							moduleConfig.add(String.valueOf(module.getSettings().indexOf(setting)), minMaxObject);
+						} else if (setting instanceof ColorSetting colorSetting) {
+							moduleConfig.addProperty(String.valueOf(module.getSettings().indexOf(setting)), colorSetting.getArgb());
 						}
 					}
 
@@ -198,6 +210,8 @@ public final class ProfileManager {
 							minMaxObject.addProperty("2", minMaxSetting.getMaxValue());
 
 							moduleConfig.add(String.valueOf(module.getSettings().indexOf(setting)), minMaxObject);
+						} else if (setting instanceof ColorSetting colorSetting) {
+							moduleConfig.addProperty(String.valueOf(module.getSettings().indexOf(setting)), colorSetting.getArgb());
 						}
 					}
 

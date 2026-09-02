@@ -9,6 +9,7 @@ import dev.lvstrng.argon.module.modules.combat.*;
 import dev.lvstrng.argon.module.modules.misc.*;
 import dev.lvstrng.argon.module.modules.render.*;
 import dev.lvstrng.argon.module.setting.KeybindSetting;
+import dev.lvstrng.argon.module.setting.ActionSetting;
 import dev.lvstrng.argon.utils.EncryptedString;
 
 import org.lwjgl.glfw.GLFW;
@@ -25,6 +26,8 @@ public final class ModuleManager implements ButtonListener {
 		// Append this stateless GUI action after the legacy module keybind so old
 		// Friends profile setting indexes remain unchanged.
 		getModule(Friends.class).addManagerAction();
+		addDisableActions();
+		modules.forEach(Module::captureDefaultState);
 	}
 
 	public void addModules() {
@@ -85,6 +88,10 @@ public final class ModuleManager implements ButtonListener {
 		add(new Scaffold());
 		add(new Clutch());
 		add(new AutoTool());
+		add(new BlockESP());
+		add(new ArmorHUD());
+		add(new AutoGap());
+		add(new ClientSpoof());
 	}
 
 	public List<Module> getEnabledModules() {
@@ -103,6 +110,16 @@ public final class ModuleManager implements ButtonListener {
 
 		for (Module module : modules)
 			module.addSetting(new KeybindSetting(EncryptedString.of("Keybind"), module.getKey(), true).setDescription(EncryptedString.of("Key to enabled the module")));
+	}
+
+	private void addDisableActions() {
+		for (Module module : modules) {
+			if (module.getOriginalCategory() == Category.CLIENT) continue;
+			module.addSetting(new ActionSetting("Disable Module", () -> module.setClientDisabled(true))
+					.visibleWhen(() -> !module.isClientDisabled()));
+			module.addSetting(new ActionSetting("Enable Module", () -> module.setClientDisabled(false))
+					.visibleWhen(module::isClientDisabled));
+		}
 	}
 
 	public List<Module> getModulesInCategory(Category category) {
@@ -141,7 +158,7 @@ public final class ModuleManager implements ButtonListener {
 		}
 
 		modules.forEach(module -> {
-			if(module.getKey() == event.button && event.action == GLFW.GLFW_PRESS)
+			if(!module.isClientDisabled() && module.getKey() == event.button && event.action == GLFW.GLFW_PRESS)
 				module.toggle();
 		});
 	}

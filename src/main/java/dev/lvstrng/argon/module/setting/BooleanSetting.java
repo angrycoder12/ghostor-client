@@ -1,5 +1,7 @@
 package dev.lvstrng.argon.module.setting;
 
+import dev.lvstrng.argon.config.ConfigManager;
+
 public final class BooleanSetting extends Setting<BooleanSetting> {
 	private boolean value;
 	private final boolean originalValue;
@@ -15,7 +17,9 @@ public final class BooleanSetting extends Setting<BooleanSetting> {
 	}
 
 	public void setValue(boolean value) {
+		if (this.value == value) return;
 		this.value = value;
+		ConfigManager.notifyChanged();
 	}
 
 	public boolean getOriginalValue() {

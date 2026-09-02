@@ -8,7 +8,9 @@ import dev.lvstrng.argon.module.modules.client.ClickGUI;
 import dev.lvstrng.argon.utils.*;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 public final class Window {
@@ -49,6 +51,7 @@ public final class Window {
 	}
 
 	public void render(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
+		synchronizeModules();
 		GhostorTheme.panel(context, prevX, prevY, prevX + width, prevY + contentHeight, new Color(12, 17, 26, 150), 9);
 		GhostorTheme.outline(context, prevX, prevY, prevX + width, prevY + contentHeight, GhostorTheme.BORDER, 9);
 		context.enableScissor(prevX + 1, prevY + 1, prevX + width - 1, prevY + contentHeight - 1);
@@ -62,6 +65,7 @@ public final class Window {
 
 
 	public void keyPressed(int keyCode, int scanCode, int modifiers) {
+		synchronizeModules();
 		for (ModuleButton moduleButton : moduleButtons)
 			moduleButton.keyPressed(keyCode, scanCode, modifiers);
 	}
@@ -85,12 +89,14 @@ public final class Window {
 	}
 
 	public void mouseClicked(double mouseX, double mouseY, int button) {
+		synchronizeModules();
 		if (extended)
 			for (ModuleButton moduleButton : moduleButtons)
 				moduleButton.mouseClicked(mouseX, mouseY, button);
 	}
 
 	public void mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+		synchronizeModules();
 		if (extended) {
 			for (ModuleButton moduleButton : moduleButtons) {
 				moduleButton.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
@@ -103,7 +109,7 @@ public final class Window {
 
 		for(ModuleButton moduleButton : moduleButtons) {
 			if (!parent.isModuleVisible(moduleButton.module)) continue;
-			moduleButton.animation.animate(0.5 * delta, moduleButton.extended ? height * (moduleButton.settings.size() + 1) : height);
+			moduleButton.animation.animate(0.5 * delta, moduleButton.extended ? height * (moduleButton.visibleSettingsCount() + 1) : height);
 
 			double supHeight = moduleButton.animation.getValue();
 			moduleButton.offset = offset;
@@ -132,6 +138,31 @@ public final class Window {
 
 		for (ModuleButton moduleButton : moduleButtons)
 			moduleButton.mouseReleased(mouseX, mouseY, button);
+	}
+
+	/** Keeps category moves stable without creating duplicate module objects. */
+	public void synchronizeModules() {
+		List<Module> expected = Argon.INSTANCE.getModuleManager().getModulesInCategory(category);
+		if (moduleButtons.size() == expected.size()) {
+			boolean same = true;
+			for (int index = 0; index < expected.size(); index++) {
+				if (moduleButtons.get(index).module != expected.get(index)) {
+					same = false;
+					break;
+				}
+			}
+			if (same) return;
+		}
+		Map<Module, ModuleButton> existing = new HashMap<>();
+		for (ModuleButton button : moduleButtons) existing.put(button.module, button);
+		List<ModuleButton> refreshed = new ArrayList<>(expected.size());
+		for (Module module : expected) {
+			ModuleButton button = existing.get(module);
+			refreshed.add(button == null ? new ModuleButton(this, module, height) : button);
+		}
+		moduleButtons.clear();
+		moduleButtons.addAll(refreshed);
+		scrollOffset = 0;
 	}
 
 	public void mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {

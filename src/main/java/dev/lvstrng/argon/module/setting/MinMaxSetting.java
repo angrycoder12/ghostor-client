@@ -1,6 +1,7 @@
 package dev.lvstrng.argon.module.setting;
 
 import java.util.Random;
+import dev.lvstrng.argon.config.ConfigManager;
 
 public class MinMaxSetting extends Setting<MinMaxSetting> {
     private final double min, max;
@@ -98,11 +99,17 @@ public class MinMaxSetting extends Setting<MinMaxSetting> {
 
     public void setMinValue(double value) {
         double precision = 1.0D / this.increment;
-        this.minValue = Math.round(Math.max(this.min, Math.min(this.max, value)) * precision) / precision;
+		double updated = Math.round(Math.max(this.min, Math.min(this.max, value)) * precision) / precision;
+		if (Double.compare(this.minValue, updated) == 0) return;
+		this.minValue = updated;
+		ConfigManager.notifyChanged();
     }
 
     public void setMaxValue(double value) {
         double precision = 1.0D / this.increment;
-        this.maxValue = Math.round(Math.max(this.min, Math.min(this.max, value)) * precision) / precision;
+		double updated = Math.round(Math.max(this.min, Math.min(this.max, value)) * precision) / precision;
+		if (Double.compare(this.maxValue, updated) == 0) return;
+		this.maxValue = updated;
+		ConfigManager.notifyChanged();
     }
 }

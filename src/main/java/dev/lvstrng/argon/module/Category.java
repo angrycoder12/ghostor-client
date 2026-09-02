@@ -6,7 +6,8 @@ public enum Category {
 	COMBAT(EncryptedString.of("Combat")),
 	MISC(EncryptedString.of("Misc")),
 	RENDER(EncryptedString.of("Render")),
-	CLIENT(EncryptedString.of("Client"));
+	CLIENT(EncryptedString.of("Client")),
+	DISABLED(EncryptedString.of("Disabled"));
 	public final CharSequence name;
 
 	Category(CharSequence name) {

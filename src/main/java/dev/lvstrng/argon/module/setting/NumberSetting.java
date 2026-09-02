@@ -1,5 +1,7 @@
 package dev.lvstrng.argon.module.setting;
 
+import dev.lvstrng.argon.config.ConfigManager;
+
 public final class NumberSetting extends Setting<NumberSetting> {
 	
 	private double min;
@@ -54,6 +56,9 @@ public final class NumberSetting extends Setting<NumberSetting> {
 
 	public void setValue(double value) {
 		double precision = 1.0D / this.increment;
-		this.value = Math.round(Math.max(this.min, Math.min(this.max, value)) * precision) / precision;
+		double updated = Math.round(Math.max(this.min, Math.min(this.max, value)) * precision) / precision;
+		if (Double.compare(this.value, updated) == 0) return;
+		this.value = updated;
+		ConfigManager.notifyChanged();
 	}
 }

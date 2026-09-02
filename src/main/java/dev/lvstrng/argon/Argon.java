@@ -1,6 +1,7 @@
 package dev.lvstrng.argon;
 
 import dev.lvstrng.argon.event.EventManager;
+import dev.lvstrng.argon.config.ConfigManager;
 import dev.lvstrng.argon.gui.ClickGui;
 import dev.lvstrng.argon.managers.FriendManager;
 import dev.lvstrng.argon.module.ModuleManager;
@@ -16,6 +17,7 @@ import net.minecraft.client.gui.screens.Screen;
 public final class Argon {
 	public RotatorManager rotatorManager;
 	public ProfileManager profileManager;
+	public ConfigManager configManager;
 	public ModuleManager moduleManager;
 	public EventManager eventManager;
 	public FriendManager friendManager;
@@ -31,22 +33,29 @@ public final class Argon {
 
 	public Argon() throws InterruptedException, IOException {
 		INSTANCE = this;
+		mc = Minecraft.getInstance();
 		this.eventManager = new EventManager();
 		this.moduleManager = new ModuleManager();
 		this.clickGui = new ClickGui();
 		this.rotatorManager = new RotatorManager();
+		this.configManager = new ConfigManager();
 		this.profileManager = new ProfileManager();
 		this.friendManager = new FriendManager();
 
-		this.getProfileManager().loadProfile();
+		// Import the old single profile once, then let the versioned manager own state.
+		if (!this.configManager.hasExistingStore()) this.getProfileManager().loadProfile();
+		this.configManager.initialize();
 		this.setLastModified();
 
 		this.guiInitialized = false;
-		mc = Minecraft.getInstance();
 	}
 
 	public ProfileManager getProfileManager() {
 		return profileManager;
+	}
+
+	public ConfigManager getConfigManager() {
+		return configManager;
 	}
 
 	public ModuleManager getModuleManager() {

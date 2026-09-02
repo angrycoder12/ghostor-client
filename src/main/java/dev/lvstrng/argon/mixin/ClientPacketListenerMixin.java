@@ -3,6 +3,8 @@ package dev.lvstrng.argon.mixin;
 import dev.lvstrng.argon.module.modules.misc.Freecam;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
+import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
+import net.minecraft.world.level.ChunkPos;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -16,6 +18,15 @@ public final class ClientPacketListenerMixin {
 		if (freecam != null && freecam.retainChunk(packet.pos())) {
 			// Cancel the complete handler so the retained chunk also keeps its light data.
 			ci.cancel();
+		}
+	}
+
+	@Inject(method = "handleLevelChunkWithLight", at = @At("HEAD"))
+	private void ghostor$acceptReloadedFreecamChunk(ClientboundLevelChunkWithLightPacket packet,
+			CallbackInfo ci) {
+		Freecam freecam = Freecam.enabledInstance();
+		if (freecam != null) {
+			freecam.acceptChunkLoad(new ChunkPos(packet.getX(), packet.getZ()));
 		}
 	}
 }

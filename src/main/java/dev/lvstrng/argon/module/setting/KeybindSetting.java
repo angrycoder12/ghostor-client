@@ -1,5 +1,7 @@
 package dev.lvstrng.argon.module.setting;
 
+import dev.lvstrng.argon.config.ConfigManager;
+
 public final class KeybindSetting extends Setting<KeybindSetting> {
 	private int keyCode;
 	private boolean listening;
@@ -34,7 +36,9 @@ public final class KeybindSetting extends Setting<KeybindSetting> {
 	}
 
 	public void setKey(int key) {
+		if (this.keyCode == key) return;
 		this.keyCode = key;
+		ConfigManager.notifyChanged();
 	}
 
     public void toggleListening() {

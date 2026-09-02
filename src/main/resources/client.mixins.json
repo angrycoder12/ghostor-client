@@ -13,6 +13,7 @@
   ],
   "client": [
     "CameraMixin",
+    "ClientBrandRetrieverMixin",
     "EntityRendererMixin",
     "ClientPlayerEntityMixin",
     "ClientPlayerInteractionManagerAccessor",
@@ -25,6 +26,7 @@
     "KeyBindingMixin",
     "KeyboardMixin",
     "LightmapRenderStateExtractorMixin",
+    "MapItemMixin",
     "MinecraftClientAccessor",
     "MinecraftClientMixin",
     "MouseMixin",
@@ -32,8 +34,7 @@
     "PlayerReachMixin",
     "PlayerSafeWalkMixin",
     "ScreenMixin",
-    "TitleScreenMixin",
-    "ViewAreaMixin"
+    "TitleScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -38,7 +38,7 @@ public final class SelfDestruct extends Module {
 		Argon.INSTANCE.getModuleManager().getModule(ClickGUI.class).setEnabled(false);
 		setEnabled(false);
 
-		Argon.INSTANCE.getProfileManager().saveProfile();
+		Argon.INSTANCE.getConfigManager().saveActiveNow();
 
 		if (mc.gui.screen() instanceof ClickGui) {
 			Argon.INSTANCE.guiInitialized = false;
