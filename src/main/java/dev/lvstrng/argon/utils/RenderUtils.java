@@ -276,4 +276,9 @@ public final class RenderUtils {
 		Gizmos.line(start, end, color.getRGB()).setAlwaysOnTop();
 	}
 
+	public static void renderLine(Color color, Vec3 start, Vec3 end, float width, boolean throughWalls) {
+		var line = Gizmos.line(start, end, color.getRGB(), Math.max(1.0F, width));
+		if (throughWalls) line.setAlwaysOnTop();
+	}
+
 }

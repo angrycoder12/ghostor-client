@@ -35,6 +35,14 @@ public final class GhostorIcons {
                 context.fill(x + 7, y + 12, x + 9, y + 15, c);
                 context.fill(x + 4, y + 14, x + 12, y + 16, c);
             }
+			case BLATENT -> {
+				// A compact lightning bolt distinguishes intentionally obvious movement modules.
+				context.fill(x + 8, y + 1, x + 13, y + 3, c);
+				context.fill(x + 6, y + 3, x + 11, y + 8, c);
+				context.fill(x + 4, y + 7, x + 10, y + 10, c);
+				context.fill(x + 8, y + 9, x + 13, y + 12, c);
+				context.fill(x + 7, y + 11, x + 10, y + 15, c);
+			}
             case CLIENT -> {
                 context.outline(x + 4, y + 4, 8, 8, c);
                 context.fill(x + 7, y + 1, x + 9, y + 4, c);
@@ -70,6 +78,14 @@ public final class GhostorIcons {
 		context.fill(x + 5, y + 5, x + 12, y + 7, c);
 		context.fill(x + 5, y + 9, x + 12, y + 11, c);
 		context.fill(x + 5, y + 13, x + 10, y + 15, c);
+	}
+
+	public static void themes(GuiGraphicsExtractor context, int x, int y, Color color) {
+		int c = color.getRGB();
+		RenderUtils.renderCircle(context, color, x + 8, y + 8, 7, 16);
+		RenderUtils.renderCircle(context, GhostorTheme.SIDEBAR, x + 5, y + 5, 2, 10);
+		RenderUtils.renderCircle(context, GhostorTheme.SIDEBAR, x + 10, y + 4, 2, 10);
+		context.fill(x + 12, y + 10, x + 16, y + 14, c);
 	}
 
     public static void trash(GuiGraphicsExtractor context, int x, int y, Color color) {

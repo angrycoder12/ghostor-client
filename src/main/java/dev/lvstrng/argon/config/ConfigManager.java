@@ -46,7 +46,7 @@ import net.fabricmc.loader.api.FabricLoader;
 
 /** Versioned, named, atomic Ghostor configuration store. */
 public final class ConfigManager {
-    public static final String DEFAULT_NAME = "none none";
+    public static final String DEFAULT_NAME = "none";
     public static final String DEFAULT_ID = "none-none";
     public static final String EXTENSION = ".ghostorconfig";
     private static final int VERSION = 1;
@@ -68,6 +68,8 @@ public final class ConfigManager {
     private boolean initialized;
     private boolean applying;
     private boolean dirty;
+    private boolean applyActiveWhenWorldReady;
+    private boolean shuttingDown;
     private long changeRevision;
 
     public ConfigManager() {
@@ -101,15 +103,24 @@ public final class ConfigManager {
                 writeDocument(DEFAULT_ID, withMetadata(captureDocument(DEFAULT_NAME, true, false),
                         configs.get(DEFAULT_ID)));
                 createdActiveDefault = DEFAULT_ID.equals(activeId);
+            } else {
+                migrateDefaultDocumentName();
             }
             if (!configs.containsKey(activeId)) activeId = DEFAULT_ID;
             initialized = true;
             if (!createdActiveDefault) {
                 Result<JsonObject> loaded = readDocument(configPath(activeId));
-                if (!loaded.ok() || !applyDocument(loaded.value())) {
+                boolean validActive = loaded.ok() && validateDocument(loaded.value()).ok();
+                boolean appliedActive = validActive && applyDocument(loaded.value());
+                if (!validActive || (!appliedActive && hasActiveWorld())) {
                     activeId = DEFAULT_ID;
                     Result<JsonObject> fallback = readDocument(configPath(DEFAULT_ID));
                     if (fallback.ok()) applyDocument(fallback.value());
+                } else if (!hasActiveWorld()) {
+                    // Keep the persisted selection even if a gameplay module cannot
+                    // finish enabling until a player and level exist. Reapply once on
+                    // the first in-world tick so the selected setup is fully active.
+                    applyActiveWhenWorldReady = true;
                 }
             }
             dirty = false;
@@ -148,6 +159,14 @@ public final class ConfigManager {
         return applying;
     }
 
+    /** Completes startup config activation once Minecraft has a live player and level. */
+    public synchronized void applyActiveWhenWorldReady() {
+        if (!initialized || shuttingDown || !applyActiveWhenWorldReady || !hasActiveWorld()) return;
+        applyActiveWhenWorldReady = false;
+        Result<JsonObject> document = readDocument(configPath(activeId));
+        if (document.ok() && applyDocument(document.value())) dirty = false;
+    }
+
     public synchronized SwitchResult switchTo(String id, UnsavedAction action) {
         Meta target = configs.get(id);
         if (target == null) return SwitchResult.failed("Config no longer exists");
@@ -174,6 +193,7 @@ public final class ConfigManager {
 			return SwitchResult.failed("Config could not be applied");
 		}
         activeId = id;
+        applyActiveWhenWorldReady = false;
         dirty = false;
         saveIndex();
 		return SwitchResult.success();
@@ -184,7 +204,7 @@ public final class ConfigManager {
         Result<String> validatedName = validateName(rawName, null);
         if (!validatedName.ok()) return Result.error(validatedName.message());
         if (basis == CreationBasis.CURRENT && !DEFAULT_ID.equals(activeId)) {
-            return Result.error("Use Current is only available from none none");
+            return Result.error("Use Current is only available from none");
         }
         if (dirty && !activeMeta().autoSave && basis != CreationBasis.CURRENT) {
             return Result.error("Save or discard the active config's changes first");
@@ -221,6 +241,7 @@ public final class ConfigManager {
             return Result.error("The new config could not be applied");
         }
         activeId = id;
+        applyActiveWhenWorldReady = false;
         dirty = false;
         saveIndex();
         return Result.ok(summary(meta));
@@ -334,15 +355,17 @@ public final class ConfigManager {
     }
 
     public synchronized void shutdown() {
-        if (!initialized) return;
+        if (!initialized || shuttingDown) return;
+        shuttingDown = true;
         cancelPendingSave();
         if (activeMeta().autoSave || DEFAULT_ID.equals(activeId)) saveCurrentTo(activeId);
         saveIndex();
         writer.shutdown();
+        initialized = false;
     }
 
     private synchronized void onLiveStateChanged() {
-        if (!initialized || applying) return;
+        if (!initialized || applying || shuttingDown) return;
         dirty = true;
         changeRevision++;
         if (activeMeta().autoSave || DEFAULT_ID.equals(activeId)) scheduleAutosave();
@@ -451,6 +474,7 @@ public final class ConfigManager {
                 validatePanel(layout == null ? null : layout.blockSelector);
                 validatePanel(layout == null ? null : layout.configs);
                 validatePanel(layout == null ? null : layout.configForm);
+                validatePanel(layout == null ? null : layout.themes);
             }
             Map<String, Module> known = modulesById();
             for (Map.Entry<String, JsonElement> entry : modules.getAsJsonObject().entrySet()) {
@@ -607,8 +631,14 @@ public final class ConfigManager {
                     String name = stringOr(object, "name", "");
                     if (!validId(id) || !Files.isRegularFile(configPath(id))) continue;
                     if (DEFAULT_ID.equals(id)) name = DEFAULT_NAME;
+                    else if (name.equalsIgnoreCase(DEFAULT_NAME)) name = availableLegacyDefaultName();
                     if (!DEFAULT_ID.equals(id) && !validateName(name, id).ok()) continue;
-                    configs.put(id, new Meta(id, name, DEFAULT_ID.equals(id) || booleanOr(object, "autoSave", false)));
+                    Meta meta = new Meta(id, name, DEFAULT_ID.equals(id) || booleanOr(object, "autoSave", false));
+                    configs.put(id, meta);
+                    if (!DEFAULT_ID.equals(id) && !name.equals(stringOr(object, "name", ""))) {
+                        Result<JsonObject> document = readDocument(configPath(id));
+                        if (document.ok()) writeDocument(id, withMetadata(document.value(), meta));
+                    }
                 }
             }
             if (configs.containsKey(savedActive)) activeId = savedActive;
@@ -635,6 +665,29 @@ public final class ConfigManager {
             atomicWrite(indexPath, GSON.toJson(root));
         } catch (Exception ignored) {
         }
+    }
+
+    private void migrateDefaultDocumentName() {
+        Result<JsonObject> document = readDocument(configPath(DEFAULT_ID));
+        if (!document.ok() || DEFAULT_NAME.equals(stringOr(document.value(), "name", ""))) return;
+        writeDocument(DEFAULT_ID, withMetadata(document.value(), configs.get(DEFAULT_ID)));
+    }
+
+    private String availableLegacyDefaultName() {
+        String base = DEFAULT_NAME + " (saved)";
+        String candidate = base;
+        int suffix = 2;
+        while (containsConfigName(candidate)) {
+            candidate = base + " " + suffix++;
+        }
+        return candidate;
+    }
+
+    private boolean containsConfigName(String name) {
+        for (Meta meta : configs.values()) {
+            if (meta.name.equalsIgnoreCase(name)) return true;
+        }
+        return false;
     }
 
     private Result<JsonObject> readDocument(Path path) {
@@ -705,7 +758,8 @@ public final class ConfigManager {
         if (rawName == null) return Result.error("Enter a config name");
         String name = rawName.strip();
         if (name.isEmpty() || name.length() > 48) return Result.error("Names must be 1 to 48 characters");
-		if (name.equalsIgnoreCase(DEFAULT_NAME) || name.indexOf('/') >= 0 || name.indexOf('\\') >= 0
+		if (name.equalsIgnoreCase(DEFAULT_NAME) || name.equalsIgnoreCase("none none")
+                || name.indexOf('/') >= 0 || name.indexOf('\\') >= 0
 				|| name.matches(".*[<>:\"|?*].*") || name.endsWith(".")
 				|| name.codePoints().anyMatch(Character::isISOControl)
 				|| name.matches("(?i)^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\\..*)?$")) {
@@ -758,6 +812,10 @@ public final class ConfigManager {
             }
         }
         return result;
+    }
+
+    private static boolean hasActiveWorld() {
+        return Argon.mc != null && Argon.mc.player != null && Argon.mc.level != null;
     }
 
     private static boolean isFiniteNumber(JsonElement element) {

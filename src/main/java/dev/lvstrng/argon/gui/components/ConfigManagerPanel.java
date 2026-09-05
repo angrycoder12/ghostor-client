@@ -52,7 +52,7 @@ public final class ConfigManagerPanel {
 
         List<ConfigSummary> configs = manager().summaries();
         int listTop = y + 78;
-        int listBottom = y + height - 76;
+        int listBottom = y + height - 94;
         int visible = Math.max(1, (listBottom - listTop) / ROW_HEIGHT);
         scroll = Math.max(0, Math.min(scroll, Math.max(0, configs.size() - visible)));
         context.enableScissor(x + 12, listTop, x + width - 12, listBottom);
@@ -63,13 +63,15 @@ public final class ConfigManagerPanel {
         context.disableScissor();
 
         int footerY = y + height - 57;
-        button(context, mouseX, mouseY, x + 18, footerY, 98, "New Conf.", false);
-        button(context, mouseX, mouseY, x + 126, footerY, 86, "Upload", false);
-        if (manager().isDirty()) button(context, mouseX, mouseY, x + 222, footerY, 100, "Save Active", false);
+        drawSecondaryButton(context, x + 18, footerY, x + 80, footerY + 36, "Back",
+                hovered(mouseX, mouseY, x + 18, footerY, x + 80, footerY + 36));
+        button(context, mouseX, mouseY, x + 90, footerY, 98, "New Conf.", false);
+        button(context, mouseX, mouseY, x + 198, footerY, 86, "Upload", false);
+        if (manager().isDirty()) button(context, mouseX, mouseY, x + 294, footerY, 100, "Save Active", false);
         String message = status.isBlank() ? activeLabel() : status;
-        TextRenderer.drawSmallString(fit(message, Math.max(80, width - 350)), context,
-                x + width - 18 - TextRenderer.getSmallWidth(fit(message, Math.max(80, width - 350))),
-                footerY + 15, status.isBlank() ? GhostorTheme.TEXT_MUTED.getRGB() : GhostorTheme.ACCENT_HOVER.getRGB());
+        String fittedMessage = fit(message, width - 40);
+        TextRenderer.drawSmallString(fittedMessage, context, x + 20, footerY - 18,
+                status.isBlank() ? GhostorTheme.TEXT_MUTED.getRGB() : GhostorTheme.ACCENT_HOVER.getRGB());
 
         if (pendingSwitch != null) renderConfirm(context, mouseX, mouseY,
                 "Unsaved changes", "Save changes before switching?", true);
@@ -79,7 +81,7 @@ public final class ConfigManagerPanel {
 
     private void renderRow(GuiGraphicsExtractor context, int mouseX, int mouseY, ConfigSummary config, int rowY) {
         boolean over = hovered(mouseX, mouseY, x + 18, rowY, x + width - 18, rowY + 48);
-        Color fill = config.active() ? new Color(40, 34, 72, 245)
+        Color fill = config.active() ? GhostorTheme.ACTIVE_SURFACE
                 : over ? GhostorTheme.SURFACE_HOVER : GhostorTheme.SURFACE_ELEVATED;
         GhostorTheme.panel(context, x + 18, rowY, x + width - 18, rowY + 48, fill, 7);
         GhostorTheme.outline(context, x + 18, rowY, x + width - 18, rowY + 48,
@@ -104,7 +106,7 @@ public final class ConfigManagerPanel {
         int boxHeight = 150;
         int boxX = x + (width - boxWidth) / 2;
         int boxY = y + (height - boxHeight) / 2;
-        GhostorTheme.panel(context, x, y, x + width, y + height, new Color(4, 6, 10, 190), GhostorTheme.RADIUS);
+        GhostorTheme.panel(context, x, y, x + width, y + height, GhostorTheme.BACKDROP, GhostorTheme.RADIUS);
         GhostorTheme.panel(context, boxX, boxY, boxX + boxWidth, boxY + boxHeight,
                 GhostorTheme.SURFACE, 10);
         GhostorTheme.outline(context, boxX, boxY, boxX + boxWidth, boxY + boxHeight,
@@ -130,7 +132,7 @@ public final class ConfigManagerPanel {
 
         List<ConfigSummary> configs = manager().summaries();
         int listTop = y + 78;
-        int listBottom = y + height - 76;
+        int listBottom = y + height - 94;
         int visible = Math.max(1, (listBottom - listTop) / ROW_HEIGHT);
         for (int row = 0; row < visible && row + scroll < configs.size(); row++) {
             ConfigSummary config = configs.get(row + scroll);
@@ -155,13 +157,16 @@ public final class ConfigManagerPanel {
         }
 
         int footerY = y + height - 57;
-        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && hovered(mouseX, mouseY, x + 18, footerY, x + 116, footerY + 36)) {
+        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && hovered(mouseX, mouseY, x + 18, footerY, x + 80, footerY + 36)) {
+            parent.closeConfigsPanel();
+        } else if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT
+                && hovered(mouseX, mouseY, x + 90, footerY, x + 188, footerY + 36)) {
             parent.openNewConfig(null);
         } else if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT
-                && hovered(mouseX, mouseY, x + 126, footerY, x + 212, footerY + 36)) {
+                && hovered(mouseX, mouseY, x + 198, footerY, x + 284, footerY + 36)) {
             chooseImport();
         } else if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && manager().isDirty()
-                && hovered(mouseX, mouseY, x + 222, footerY, x + 322, footerY + 36)) {
+                && hovered(mouseX, mouseY, x + 294, footerY, x + 394, footerY + 36)) {
             setStatus(manager().saveActiveNow());
         }
         return true;
@@ -273,6 +278,15 @@ public final class ConfigManagerPanel {
         GhostorTheme.panel(context, x, y, x + width, y + 36,
                 over ? GhostorTheme.ACCENT_HOVER : GhostorTheme.ACCENT, 7);
         TextRenderer.drawCenteredString(label, context, x + width / 2, y + 12, GhostorTheme.TEXT.getRGB());
+    }
+
+    private static void drawSecondaryButton(GuiGraphicsExtractor context,
+            int x1, int y1, int x2, int y2, String label, boolean hovered) {
+        GhostorTheme.panel(context, x1, y1, x2, y2,
+                hovered ? GhostorTheme.SURFACE_HOVER : GhostorTheme.ACCENT_SOFT, 7);
+        GhostorTheme.outline(context, x1, y1, x2, y2,
+                hovered ? GhostorTheme.ACCENT : GhostorTheme.ACCENT_BORDER, 7);
+        TextRenderer.drawCenteredString(label, context, (x1 + x2) / 2, y1 + 13, GhostorTheme.TEXT.getRGB());
     }
 
     private static void secondary(GuiGraphicsExtractor context, int mouseX, int mouseY,

@@ -5,6 +5,9 @@ import dev.lvstrng.argon.event.events.ButtonListener;
 import dev.lvstrng.argon.module.modules.client.ClickGUI;
 import dev.lvstrng.argon.module.modules.client.Friends;
 import dev.lvstrng.argon.module.modules.client.SelfDestruct;
+import dev.lvstrng.argon.module.modules.blatant.BoatFly;
+import dev.lvstrng.argon.module.modules.blatant.Fly;
+import dev.lvstrng.argon.module.modules.blatant.Speed;
 import dev.lvstrng.argon.module.modules.combat.*;
 import dev.lvstrng.argon.module.modules.misc.*;
 import dev.lvstrng.argon.module.modules.render.*;
@@ -92,6 +95,13 @@ public final class ModuleManager implements ButtonListener {
 		add(new ArmorHUD());
 		add(new AutoGap());
 		add(new ClientSpoof());
+		add(new Backtrack());
+		add(new FastPlace());
+		add(new Velocity());
+		add(new Fly());
+		add(new BoatFly());
+		add(new Speed());
+		add(new Trajectories());
 	}
 
 	public List<Module> getEnabledModules() {
@@ -125,6 +135,8 @@ public final class ModuleManager implements ButtonListener {
 	public List<Module> getModulesInCategory(Category category) {
 		return modules.stream()
 				.filter(module -> module.getCategory() == category)
+				.sorted(java.util.Comparator.comparing(
+						module -> module.getName().toString(), String.CASE_INSENSITIVE_ORDER))
 				.toList();
 	}
 

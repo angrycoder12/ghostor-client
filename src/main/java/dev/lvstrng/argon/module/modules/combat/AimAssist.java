@@ -135,7 +135,9 @@ public final class AimAssist extends Module implements HudListener, MouseMoveLis
 			resetSpeed.reset();
 		}
 
-		Vec3 targetPos = posMode.isMode(PosMode.Normal) ? target.position() : target.getPosition(RenderUtils.tickProgress());
+		Vec3 targetPos = Backtrack.getHittablePosition(
+				target,
+				posMode.isMode(PosMode.Normal) ? 1.0F : RenderUtils.tickProgress());
 
 		if (aimAt.isMode(AimMode.Chest))
 			targetPos = targetPos.add(0, -0.5, 0);

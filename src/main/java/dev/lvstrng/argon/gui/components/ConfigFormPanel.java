@@ -98,7 +98,7 @@ public final class ConfigFormPanel {
         else renderNew(context, mouseX, mouseY, autoY + 54);
 
         int footerY = y + height - 54;
-        secondary(context, mouseX, mouseY, x + 20, footerY, 78, "Back");
+        secondary(context, mouseX, mouseY, x + 20, footerY, 62, "Back");
         button(context, mouseX, mouseY, x + width - 110, footerY, 90, edit ? "Apply" : "Create");
         if (!status.isBlank()) TextRenderer.drawSmallString(fit(status, width - 230), context,
                 x + 112, footerY + 14, status.startsWith("Saved") || status.startsWith("Created")
@@ -110,12 +110,22 @@ public final class ConfigFormPanel {
         ConfigSummary active = manager().active();
         boolean allowCurrent = active != null && active.permanent();
         TextRenderer.drawSmallString("Starting point", context, x + 20, top, GhostorTheme.TEXT_MUTED.getRGB());
-        if (allowCurrent) choice(context, mouseX, mouseY, x + 20, top + 24, 118, "Use Current", basis == CreationBasis.CURRENT);
-        choice(context, mouseX, mouseY, x + (allowCurrent ? 148 : 20), top + 24, 146,
+        int choiceCount = allowCurrent ? 3 : 2;
+        int gap = 8;
+        int choiceWidth = (width - 40 - gap * (choiceCount - 1)) / choiceCount;
+        int choiceX = x + 20;
+        if (allowCurrent) {
+            choice(context, mouseX, mouseY, choiceX, top + 24, choiceWidth,
+                    "Use Current", basis == CreationBasis.CURRENT);
+            choiceX += choiceWidth + gap;
+        }
+        choice(context, mouseX, mouseY, choiceX, top + 24, choiceWidth,
                 "Start From Scratch", basis == CreationBasis.SCRATCH);
-        choice(context, mouseX, mouseY, x + width - 112, top + 24, 92, "Upload", basis == CreationBasis.IMPORTED);
+        choiceX += choiceWidth + gap;
+        choice(context, mouseX, mouseY, choiceX, top + 24, choiceWidth,
+                "Upload", basis == CreationBasis.IMPORTED);
         String basisText = switch (basis) {
-            case CURRENT -> "Copies every setting from the current none none setup.";
+            case CURRENT -> "Copies every setting from the current none setup.";
             case SCRATCH -> "Uses each module's real built-in defaults.";
             case IMPORTED -> imported == null ? "Choose a .ghostorconfig file." : "Ready: " + imported.suggestedName();
         };
@@ -134,7 +144,7 @@ public final class ConfigFormPanel {
         int boxWidth = Math.min(350, width - 44);
         int boxX = x + (width - boxWidth) / 2;
         int boxY = y + (height - 142) / 2;
-        GhostorTheme.panel(context, x, y, x + width, y + height, new Color(4, 6, 10, 190), GhostorTheme.RADIUS);
+        GhostorTheme.panel(context, x, y, x + width, y + height, GhostorTheme.BACKDROP, GhostorTheme.RADIUS);
         GhostorTheme.panel(context, boxX, boxY, boxX + boxWidth, boxY + 142, GhostorTheme.SURFACE, 10);
         GhostorTheme.outline(context, boxX, boxY, boxX + boxWidth, boxY + 142, GhostorTheme.ACCENT_BORDER, 10);
         TextRenderer.drawString("Replace saved config?", context, boxX + 18, boxY + 22, GhostorTheme.TEXT.getRGB());
@@ -171,18 +181,27 @@ public final class ConfigFormPanel {
         } else {
             ConfigSummary active = manager().active();
             boolean allowCurrent = active != null && active.permanent();
-            if (allowCurrent && hovered(mouseX, mouseY, x + 20, top + 24, x + 138, top + 60)) {
+            int choiceCount = allowCurrent ? 3 : 2;
+            int gap = 8;
+            int choiceWidth = (width - 40 - gap * (choiceCount - 1)) / choiceCount;
+            int choiceX = x + 20;
+            if (allowCurrent && hovered(mouseX, mouseY, choiceX, top + 24,
+                    choiceX + choiceWidth, top + 60)) {
                 basis = CreationBasis.CURRENT;
-            } else if (hovered(mouseX, mouseY, x + (allowCurrent ? 148 : 20), top + 24,
-                    x + (allowCurrent ? 294 : 166), top + 60)) {
+            } else {
+                if (allowCurrent) choiceX += choiceWidth + gap;
+                if (hovered(mouseX, mouseY, choiceX, top + 24, choiceX + choiceWidth, top + 60)) {
                 basis = CreationBasis.SCRATCH;
-            } else if (hovered(mouseX, mouseY, x + width - 112, top + 24, x + width - 20, top + 60)) {
-                chooseImport();
+                } else {
+                    choiceX += choiceWidth + gap;
+                    if (hovered(mouseX, mouseY, choiceX, top + 24,
+                            choiceX + choiceWidth, top + 60)) chooseImport();
+                }
             }
         }
 
         int footerY = y + height - 54;
-        if (hovered(mouseX, mouseY, x + 20, footerY, x + 98, footerY + 36)) {
+        if (hovered(mouseX, mouseY, x + 20, footerY, x + 82, footerY + 36)) {
             parent.closeConfigForm();
         } else if (hovered(mouseX, mouseY, x + width - 110, footerY, x + width - 20, footerY + 36)) {
             apply();
@@ -273,7 +292,7 @@ public final class ConfigFormPanel {
 
     private static void renderToggle(GuiGraphicsExtractor context, int x, int y, boolean enabled) {
         GhostorTheme.panel(context, x, y, x + 38, y + 22,
-                enabled ? GhostorTheme.ACCENT : new Color(65, 76, 96), 11);
+                enabled ? GhostorTheme.ACCENT : GhostorTheme.DISABLED_TOGGLE, 11);
         RenderUtils.renderCircle(context, Color.WHITE, x + (enabled ? 27 : 11), y + 11, 7, 16);
     }
 
@@ -284,7 +303,7 @@ public final class ConfigFormPanel {
                 selected ? GhostorTheme.ACCENT : over ? GhostorTheme.SURFACE_HOVER : GhostorTheme.SURFACE_ELEVATED, 7);
         GhostorTheme.outline(context, x, y, x + width, y + 36,
                 selected ? GhostorTheme.ACCENT_HOVER : GhostorTheme.BORDER, 7);
-        TextRenderer.drawCenteredString(label, context, x + width / 2, y + 12, GhostorTheme.TEXT.getRGB());
+        drawFittedButtonLabel(context, x, y, width, label);
     }
 
     private static void button(GuiGraphicsExtractor context, int mouseX, int mouseY,
@@ -292,7 +311,7 @@ public final class ConfigFormPanel {
         boolean over = hovered(mouseX, mouseY, x, y, x + width, y + 36);
         GhostorTheme.panel(context, x, y, x + width, y + 36,
                 over ? GhostorTheme.ACCENT_HOVER : GhostorTheme.ACCENT, 7);
-        TextRenderer.drawCenteredString(label, context, x + width / 2, y + 12, GhostorTheme.TEXT.getRGB());
+        drawFittedButtonLabel(context, x, y, width, label);
     }
 
     private static void secondary(GuiGraphicsExtractor context, int mouseX, int mouseY,
@@ -300,8 +319,9 @@ public final class ConfigFormPanel {
         boolean over = hovered(mouseX, mouseY, x, y, x + width, y + 36);
         GhostorTheme.panel(context, x, y, x + width, y + 36,
                 over ? GhostorTheme.SURFACE_HOVER : GhostorTheme.ACCENT_SOFT, 7);
-        GhostorTheme.outline(context, x, y, x + width, y + 36, GhostorTheme.ACCENT_BORDER, 7);
-        TextRenderer.drawCenteredString(label, context, x + width / 2, y + 12, GhostorTheme.TEXT.getRGB());
+        GhostorTheme.outline(context, x, y, x + width, y + 36,
+                over ? GhostorTheme.ACCENT : GhostorTheme.ACCENT_BORDER, 7);
+        TextRenderer.drawCenteredString(label, context, x + width / 2, y + 13, GhostorTheme.TEXT.getRGB());
     }
 
     private static void danger(GuiGraphicsExtractor context, int mouseX, int mouseY,
@@ -310,6 +330,17 @@ public final class ConfigFormPanel {
         GhostorTheme.panel(context, x, y, x + width, y + 36,
                 over ? GhostorTheme.DANGER_HOVER : GhostorTheme.DANGER, 7);
         TextRenderer.drawCenteredString(label, context, x + width / 2, y + 12, GhostorTheme.TEXT.getRGB());
+    }
+
+    private static void drawFittedButtonLabel(GuiGraphicsExtractor context,
+            int x, int y, int width, String label) {
+        if (TextRenderer.getWidth(label) <= width - 12) {
+            TextRenderer.drawCenteredString(label, context, x + width / 2, y + 12, GhostorTheme.TEXT.getRGB());
+            return;
+        }
+        String fitted = fit(label, width - 10);
+        TextRenderer.drawSmallString(fitted, context,
+                x + (width - TextRenderer.getSmallWidth(fitted)) / 2, y + 14, GhostorTheme.TEXT.getRGB());
     }
 
     private static boolean hovered(double mouseX, double mouseY, int x1, int y1, int x2, int y2) {

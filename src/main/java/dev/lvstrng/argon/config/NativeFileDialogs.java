@@ -15,11 +15,14 @@ public final class NativeFileDialogs {
         thread.setDaemon(true);
         return thread;
     });
+    private static int dialogsInFlight;
+    private static boolean restoreFullscreenAfterDialogs;
 
     private NativeFileDialogs() {
     }
 
     public static void openConfig(Path initialDirectory, Consumer<Path> callback) {
+        beginDialog();
         EXECUTOR.execute(() -> {
             String result;
             try (MemoryStack stack = MemoryStack.stackPush()) {
@@ -37,6 +40,7 @@ public final class NativeFileDialogs {
     }
 
     public static void saveConfig(Path suggestedPath, Consumer<Path> callback) {
+        beginDialog();
         EXECUTOR.execute(() -> {
             String result;
             try (MemoryStack stack = MemoryStack.stackPush()) {
@@ -53,9 +57,41 @@ public final class NativeFileDialogs {
         });
     }
 
+    private static synchronized void beginDialog() {
+        if (dialogsInFlight++ == 0) restoreFullscreenAfterDialogs = leaveFullscreen();
+    }
+
+    private static boolean leaveFullscreen() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft == null || !minecraft.getWindow().isFullscreen()) return false;
+        minecraft.getWindow().toggleFullScreen();
+        minecraft.getWindow().updateFullscreenIfChanged();
+        return true;
+    }
+
     private static void dispatch(String result, Consumer<Path> callback) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft == null) return;
-        minecraft.execute(() -> callback.accept(result == null || result.isBlank() ? null : Path.of(result)));
+        if (minecraft == null) {
+            finishDialog(null);
+            return;
+        }
+        minecraft.execute(() -> {
+            try {
+                callback.accept(result == null || result.isBlank() ? null : Path.of(result));
+            } finally {
+                finishDialog(minecraft);
+            }
+        });
+    }
+
+    private static synchronized void finishDialog(Minecraft minecraft) {
+        if (dialogsInFlight > 0) dialogsInFlight--;
+        if (dialogsInFlight != 0) return;
+        boolean restoreFullscreen = restoreFullscreenAfterDialogs;
+        restoreFullscreenAfterDialogs = false;
+        if (restoreFullscreen && minecraft != null && !minecraft.getWindow().isFullscreen()) {
+            minecraft.getWindow().toggleFullScreen();
+            minecraft.getWindow().updateFullscreenIfChanged();
+        }
     }
 }

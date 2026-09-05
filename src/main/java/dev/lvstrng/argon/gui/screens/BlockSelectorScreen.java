@@ -173,7 +173,7 @@ public final class BlockSelectorScreen {
 			boolean listed = module.isListed(block);
 			boolean focused = block == focusedBlock;
 			GhostorTheme.panel(context, listX + 7, rowY, listX + listWidth - 12, rowY + ROW_HEIGHT,
-					focused ? new Color(35, 30, 63, 248) : over ? GhostorTheme.SURFACE_HOVER : GhostorTheme.SURFACE_ELEVATED, 7);
+					focused ? GhostorTheme.ACTIVE_SURFACE : over ? GhostorTheme.SURFACE_HOVER : GhostorTheme.SURFACE_ELEVATED, 7);
 			GhostorTheme.outline(context, listX + 7, rowY, listX + listWidth - 12, rowY + ROW_HEIGHT,
 					focused || listed ? GhostorTheme.ACCENT_BORDER : GhostorTheme.BORDER, 7);
 			context.item(new ItemStack(block), listX + 16, rowY + 14);
@@ -351,7 +351,7 @@ public final class BlockSelectorScreen {
 
 	private void renderToggle(GuiGraphicsExtractor context, int x, int y, boolean enabled) {
 		GhostorTheme.panel(context, x, y, x + 36, y + 20,
-				enabled ? GhostorTheme.ACCENT : new Color(65, 76, 96), 10);
+				enabled ? GhostorTheme.ACCENT : GhostorTheme.DISABLED_TOGGLE, 10);
 		RenderUtils.renderCircle(context, Color.WHITE, x + (enabled ? 26 : 10), y + 10, 7, 16);
 	}
 

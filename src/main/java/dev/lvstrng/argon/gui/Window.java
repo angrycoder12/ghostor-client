@@ -52,7 +52,9 @@ public final class Window {
 
 	public void render(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
 		synchronizeModules();
-		GhostorTheme.panel(context, prevX, prevY, prevX + width, prevY + contentHeight, new Color(12, 17, 26, 150), 9);
+		GhostorTheme.panel(context, prevX, prevY, prevX + width, prevY + contentHeight,
+				new Color(GhostorTheme.SURFACE.getRed(), GhostorTheme.SURFACE.getGreen(),
+						GhostorTheme.SURFACE.getBlue(), 150), 9);
 		GhostorTheme.outline(context, prevX, prevY, prevX + width, prevY + contentHeight, GhostorTheme.BORDER, 9);
 		context.enableScissor(prevX + 1, prevY + 1, prevX + width - 1, prevY + contentHeight - 1);
 

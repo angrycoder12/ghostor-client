@@ -105,6 +105,7 @@ public final class TriggerBot extends Module implements TickListener, AttackList
 
 			ItemStack mainHandStack = mc.player.getMainHandItem();
 			Item item = mainHandStack.getItem();
+			HitResult aimHitResult = getAimHitResult();
 
 			if (onLeftClick.getValue() && GLFW.glfwGetMouseButton(mc.getWindow().handle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS)
 				return;
@@ -117,7 +118,7 @@ public final class TriggerBot extends Module implements TickListener, AttackList
 
 			if (!allItems.getValue()) {
 				if (WorldUtils.isSword(mainHandStack)) {
-					if (mc.hitResult instanceof EntityHitResult hit) {
+					if (aimHitResult instanceof EntityHitResult hit) {
 						Entity entity = hit.getEntity();
 
 						assert mc.player.getLastHurtMob() != null;
@@ -158,7 +159,7 @@ public final class TriggerBot extends Module implements TickListener, AttackList
 						}
 					}
 				} else if (WorldUtils.isAxe(mainHandStack)) {
-					if (mc.hitResult instanceof EntityHitResult hit) {
+					if (aimHitResult instanceof EntityHitResult hit) {
 						Entity entity = hit.getEntity();
 
 						if (entity instanceof Player || (strayBypass.getValue() && entity instanceof Zombie) || (allEntities.getValue() && entity != null)) {
@@ -190,7 +191,7 @@ public final class TriggerBot extends Module implements TickListener, AttackList
 					}
 				}
 			} else {
-				if (mc.hitResult instanceof EntityHitResult entityHit && mc.hitResult.getType() == HitResult.Type.ENTITY) {
+				if (aimHitResult instanceof EntityHitResult entityHit && aimHitResult.getType() == HitResult.Type.ENTITY) {
 					Entity entity = entityHit.getEntity();
 
 					assert mc.player.getLastHurtMob() != null;
@@ -226,6 +227,15 @@ public final class TriggerBot extends Module implements TickListener, AttackList
 				}
 			}
 		} catch (Exception ignored) {}
+	}
+
+	private HitResult getAimHitResult() {
+		Backtrack backtrack = Argon.INSTANCE.getModuleManager().getModule(Backtrack.class);
+		if (backtrack != null && backtrack.isTracking() && mc.player != null) {
+			HitResult result = WorldUtils.getHitResult(mc.player.entityInteractionRange());
+			if (result != null) return result;
+		}
+		return mc.hitResult;
 	}
 
 	@Override

@@ -5,6 +5,7 @@ import dev.lvstrng.argon.event.events.HudListener;
 import dev.lvstrng.argon.module.Category;
 import dev.lvstrng.argon.module.Module;
 import dev.lvstrng.argon.module.modules.client.ClickGUI;
+import dev.lvstrng.argon.module.modules.combat.Backtrack;
 import dev.lvstrng.argon.module.setting.BooleanSetting;
 import dev.lvstrng.argon.module.setting.ModeSetting;
 import dev.lvstrng.argon.module.setting.NumberSetting;
@@ -15,7 +16,6 @@ import dev.lvstrng.argon.utils.RenderUtils;
 import dev.lvstrng.argon.utils.Utils;
 import java.awt.*;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
@@ -75,7 +75,8 @@ public final class PlayerESP extends Module implements GameRenderListener, HudLi
 			}
 
 			if (tracers.getValue() && mc.hitResult != null) {
-				RenderUtils.renderLine(Utils.getMainColor(255, 1), mc.hitResult.getLocation(), player.getPosition(RenderUtils.tickProgress()));
+				RenderUtils.renderLine(Utils.getMainColor(255, 1), mc.hitResult.getLocation(),
+						Backtrack.getRealPosition(player, RenderUtils.tickProgress()));
 			}
 		}
 	}
@@ -111,10 +112,9 @@ public final class PlayerESP extends Module implements GameRenderListener, HudLi
 	}
 
 	private AABB getRenderBox(Player player, float tickDelta) {
-		double x = Mth.lerp(tickDelta, player.xo, player.getX());
-		double y = Mth.lerp(tickDelta, player.yo, player.getY());
-		double z = Mth.lerp(tickDelta, player.zo, player.getZ());
-		return player.getBoundingBox().move(x - player.getX(), y - player.getY(), z - player.getZ());
+		// ESP shows the newest server-derived position while combat keeps using the
+		// intentionally delayed entity box.
+		return Backtrack.getRealBox(player, tickDelta);
 	}
 
 	private ScreenBounds projectBounds(AABB box) {

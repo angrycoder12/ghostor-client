@@ -80,8 +80,9 @@ public final class ModuleButton {
 		if (defaultColor != toColor)
 			defaultColor = ColorUtils.smoothColorTransition(0.1F, toColor, defaultColor);
 
-		Color card = module.isEnabled() ? new Color(35, 30, 63, 245) : new Color(16, 22, 32, 238);
-		if (isHovered(mouseX, mouseY)) card = module.isEnabled() ? new Color(46, 39, 78, 250) : GhostorTheme.SURFACE_HOVER;
+		Color card = module.isEnabled() ? GhostorTheme.ACTIVE_SURFACE : GhostorTheme.SURFACE_ELEVATED;
+		if (isHovered(mouseX, mouseY)) card = module.isEnabled()
+				? GhostorTheme.ACTIVE_SURFACE.brighter() : GhostorTheme.SURFACE_HOVER;
 		GhostorTheme.panel(context, parent.getX() + 8, parent.getY() + offset, parent.getX() + parent.getWidth() - 8,
 				parent.getY() + parent.getHeight() + offset - 3, card, 7);
 		if (module.isEnabled()) context.fill(parent.getX() + 8, parent.getY() + offset + 7, parent.getX() + 11,
@@ -99,7 +100,7 @@ public final class ModuleButton {
 		int toggleY = parent.getY() + offset + 12;
 		double toggleProgress = toggleAnimation.animate(0.3 * delta, module.isEnabled() ? 1 : 0);
 		GhostorTheme.panel(context, toggleX, toggleY, toggleX + 34, toggleY + 18,
-				module.isEnabled() ? GhostorTheme.ACCENT : new Color(65, 76, 96), 9);
+				module.isEnabled() ? GhostorTheme.ACCENT : GhostorTheme.DISABLED_TOGGLE, 9);
 		RenderUtils.renderCircle(context, Color.WHITE, toggleX + 9 + toggleProgress * 16, toggleY + 9, 6, 16);
 
 		renderHover(context, mouseX, mouseY, delta);

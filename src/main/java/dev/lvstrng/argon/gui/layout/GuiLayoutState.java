@@ -31,8 +31,8 @@ public final class GuiLayoutState {
     }
 
     public void save(GuiBounds main, GuiBounds friends, GuiBounds blockSelector,
-            GuiBounds configs, GuiBounds configForm) {
-		SavedLayout layout = capture(main, friends, blockSelector, configs, configForm);
+            GuiBounds configs, GuiBounds configForm, GuiBounds themes) {
+		SavedLayout layout = capture(main, friends, blockSelector, configs, configForm, themes);
         try {
             Files.createDirectories(path.getParent());
             Path temporary = path.resolveSibling(path.getFileName() + ".tmp");
@@ -48,13 +48,14 @@ public final class GuiLayoutState {
     }
 
     public SavedLayout capture(GuiBounds main, GuiBounds friends, GuiBounds blockSelector,
-            GuiBounds configs, GuiBounds configForm) {
+            GuiBounds configs, GuiBounds configForm, GuiBounds themes) {
 		SavedLayout layout = new SavedLayout();
 		layout.main = PanelState.from(main);
 		layout.friends = PanelState.from(friends);
 		layout.blockSelector = PanelState.from(blockSelector);
 		layout.configs = PanelState.from(configs);
 		layout.configForm = PanelState.from(configForm);
+		layout.themes = PanelState.from(themes);
 		return layout;
 	}
 
@@ -64,6 +65,7 @@ public final class GuiLayoutState {
         public PanelState blockSelector;
 		public PanelState configs;
 		public PanelState configForm;
+		public PanelState themes;
     }
 
     public static final class PanelState {

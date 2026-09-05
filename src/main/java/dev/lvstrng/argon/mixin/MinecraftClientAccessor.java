@@ -19,4 +19,7 @@ public interface MinecraftClientAccessor {
 
 	@Accessor("rightClickDelay")
 	void setItemUseCooldown(int cooldown);
+
+	@Accessor("rightClickDelay")
+	int getItemUseCooldown();
 }
