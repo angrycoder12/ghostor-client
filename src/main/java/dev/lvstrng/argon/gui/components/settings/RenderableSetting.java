@@ -91,7 +91,8 @@ public abstract class RenderableSetting {
 	}
 
 	public boolean isHovered(double mouseX, double mouseY) {
-		return mouseX > parentX()
+		return parent.parent.containsViewport(mouseX, mouseY)
+				&& mouseX > parentX()
 				&& mouseX < parentX() + parentWidth()
 				&& mouseY > offset + parentOffset() + parentY()
 				&& mouseY < offset + parentOffset() + parentY() + parentHeight();

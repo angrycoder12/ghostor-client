@@ -113,7 +113,7 @@ public final class AimAssist extends Module implements HudListener, MouseMoveLis
 			timer.reset();
 		}
 
-		if (mc.player == null || mc.gui.screen() != null)
+		if (mc.player == null || mc.level == null || mc.gui.screen() != null)
 			return;
 
 		if (onlyWeapon.getValue() && !WorldUtils.isWeapon(mc.player.getMainHandItem()))
@@ -123,7 +123,8 @@ public final class AimAssist extends Module implements HudListener, MouseMoveLis
 			return;
 
 		Player target = WorldUtils.findNearestPlayer(mc.player, radius.getValueFloat(), seeOnly.getValue(), true);
-		if (stickyAim.getValue() && mc.player.getLastHurtMob() instanceof Player player && player.distanceTo(mc.player) < radius.getValue())
+		if (stickyAim.getValue() && mc.player.getLastHurtMob() instanceof Player player
+				&& WorldUtils.isValidCombatPlayer(player) && player.distanceTo(mc.player) < radius.getValue())
 			target = player;
 
 		if (target == null)

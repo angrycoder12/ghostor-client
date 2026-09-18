@@ -12,9 +12,8 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.util.Mth;
 
 public final class Slider extends RenderableSetting {
+	private static final double TRACK_INSET = 20.0D;
 	public boolean dragging;
-	public double offsetX;
-	public double lerpedOffsetX = 0;
 
 	private final NumberSetting setting;
 
@@ -55,12 +54,16 @@ public final class Slider extends RenderableSetting {
 	public void render(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
 		super.render(context, mouseX, mouseY, delta);
 
-		offsetX = (setting.getValue() - setting.getMin()) / (setting.getMax() - setting.getMin()) * parentWidth();
-		lerpedOffsetX = MathUtils.goodLerp((float) (0.5 * delta), lerpedOffsetX, offsetX);
 		int trackY = parentY() + offset + parentOffset() + parentHeight() - 11;
-		context.fill(parentX() + 20, trackY, parentX() + parentWidth() - 20, trackY + 3, GhostorTheme.DISABLED.getRGB());
-		context.fillGradient(parentX() + 20, trackY, (int) (parentX() + 20 + (lerpedOffsetX / parentWidth()) * (parentWidth() - 40)), trackY + 3, GhostorTheme.ACCENT.getRGB(), GhostorTheme.ACCENT_HOVER.getRGB());
-		RenderUtils.renderCircle(context, GhostorTheme.TEXT, parentX() + 20 + (lerpedOffsetX / parentWidth()) * (parentWidth() - 40), trackY + 1.5, 4, 10);
+		double start = trackStart();
+		double end = trackEnd();
+		double handleX = Mth.lerp(normalizedValue(), start, end);
+		context.fill((int) Math.round(start), trackY, (int) Math.round(end), trackY + 3, GhostorTheme.DISABLED.getRGB());
+		context.fillGradient((int) Math.round(start), trackY, (int) Math.round(handleX), trackY + 3,
+				GhostorTheme.ACCENT.getRGB(), GhostorTheme.ACCENT_HOVER.getRGB());
+		Color handleColor = currentColor1 == null ? GhostorTheme.ACCENT_HOVER : currentColor1.brighter();
+		RenderUtils.renderCircle(context, new Color(0, 0, 0, 170), handleX, trackY + 1.5D, 6, 16);
+		RenderUtils.renderCircle(context, handleColor, handleX, trackY + 1.5D, 5, 16);
 
 		TextRenderer.drawString(setting.getName(), context, parentX() + 20, (parentY() + parentOffset() + offset) + 8, GhostorTheme.TEXT.getRGB());
 		String value = String.valueOf(setting.getValue());
@@ -88,9 +91,22 @@ public final class Slider extends RenderableSetting {
 	}
 
 	private void slide(double mouseX) {
-		double a = mouseX - parentX();
-		double b = Mth.clamp(a / parentWidth(), 0, 1);
+		double start = trackStart();
+		double b = Mth.clamp((mouseX - start) / Math.max(1.0D, trackEnd() - start), 0.0D, 1.0D);
 		setting.setValue(MathUtils.roundToDecimal(b * (setting.getMax() - setting.getMin()) + setting.getMin(), setting.getIncrement()));
+	}
+
+	private double normalizedValue() {
+		double range = setting.getMax() - setting.getMin();
+		return range <= 0.0D ? 0.0D : Mth.clamp((setting.getValue() - setting.getMin()) / range, 0.0D, 1.0D);
+	}
+
+	private double trackStart() {
+		return parentX() + TRACK_INSET;
+	}
+
+	private double trackEnd() {
+		return Math.max(trackStart(), parentX() + parentWidth() - TRACK_INSET);
 	}
 
 	@Override

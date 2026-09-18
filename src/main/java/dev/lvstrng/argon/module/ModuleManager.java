@@ -8,6 +8,7 @@ import dev.lvstrng.argon.module.modules.client.SelfDestruct;
 import dev.lvstrng.argon.module.modules.blatant.BoatFly;
 import dev.lvstrng.argon.module.modules.blatant.Fly;
 import dev.lvstrng.argon.module.modules.blatant.Speed;
+import dev.lvstrng.argon.module.modules.blatant.LegitSpeed;
 import dev.lvstrng.argon.module.modules.combat.*;
 import dev.lvstrng.argon.module.modules.misc.*;
 import dev.lvstrng.argon.module.modules.render.*;
@@ -18,10 +19,13 @@ import dev.lvstrng.argon.utils.EncryptedString;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 public final class ModuleManager implements ButtonListener {
 	private final List<Module> modules = new ArrayList<>();
+	private final Map<Category, List<Module>> modulesByCategory = new EnumMap<>(Category.class);
 
 	public ModuleManager() {
 		addModules();
@@ -102,6 +106,12 @@ public final class ModuleManager implements ButtonListener {
 		add(new BoatFly());
 		add(new Speed());
 		add(new Trajectories());
+		add(new PumpkinVision());
+		add(new MobESP());
+		add(new BlockIn());
+		add(new LegitSpeed());
+		add(new WaterBucket());
+		add(new AntiBot());
 	}
 
 	public List<Module> getEnabledModules() {
@@ -133,11 +143,16 @@ public final class ModuleManager implements ButtonListener {
 	}
 
 	public List<Module> getModulesInCategory(Category category) {
-		return modules.stream()
-				.filter(module -> module.getCategory() == category)
+		return modulesByCategory.computeIfAbsent(category, requested -> modules.stream()
+				.filter(module -> module.getCategory() == requested)
 				.sorted(java.util.Comparator.comparing(
 						module -> module.getName().toString(), String.CASE_INSENSITIVE_ORDER))
-				.toList();
+				.toList());
+	}
+
+	/** Invalidates the small GUI index after a module is renamed or moved. */
+	public void invalidateCategoryIndex() {
+		modulesByCategory.clear();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -150,6 +165,7 @@ public final class ModuleManager implements ButtonListener {
 
 	public void add(Module module) {
 		modules.add(module);
+		invalidateCategoryIndex();
 	}
 
 	@Override

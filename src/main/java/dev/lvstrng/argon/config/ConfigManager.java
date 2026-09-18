@@ -472,6 +472,7 @@ public final class ConfigManager {
                 validatePanel(layout == null ? null : layout.main);
                 validatePanel(layout == null ? null : layout.friends);
                 validatePanel(layout == null ? null : layout.blockSelector);
+				validatePanel(layout == null ? null : layout.mobSelector);
                 validatePanel(layout == null ? null : layout.configs);
                 validatePanel(layout == null ? null : layout.configForm);
                 validatePanel(layout == null ? null : layout.themes);

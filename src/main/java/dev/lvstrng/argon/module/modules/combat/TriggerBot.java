@@ -97,6 +97,9 @@ public final class TriggerBot extends Module implements TickListener, AttackList
 	@Override
 	public void onTick() {
 		try {
+			if (mc.player == null || mc.level == null)
+				return;
+
 			if (!inScreen.getValue() && mc.gui.screen() != null)
 				return;
 
@@ -125,7 +128,7 @@ public final class TriggerBot extends Module implements TickListener, AttackList
 						if (sticky.getValue() && entity != mc.player.getLastHurtMob())
 							return;
 
-						if (entity instanceof Player || (strayBypass.getValue() && entity instanceof Zombie) || (allEntities.getValue() && entity != null)) {
+						if (isValidTarget(entity)) {
 
 							if (entity instanceof Player player) {
 								if (checkShield.getValue() && player.isBlocking() && !WorldUtils.isShieldFacingAway(player))
@@ -162,7 +165,7 @@ public final class TriggerBot extends Module implements TickListener, AttackList
 					if (aimHitResult instanceof EntityHitResult hit) {
 						Entity entity = hit.getEntity();
 
-						if (entity instanceof Player || (strayBypass.getValue() && entity instanceof Zombie) || (allEntities.getValue() && entity != null)) {
+						if (isValidTarget(entity)) {
 							if (entity instanceof Player player) {
 								if (checkShield.getValue() && player.isBlocking() && !WorldUtils.isShieldFacingAway(player))
 									return;
@@ -198,7 +201,7 @@ public final class TriggerBot extends Module implements TickListener, AttackList
 					if (sticky.getValue() && entity != mc.player.getLastHurtMob())
 						return;
 
-					if (entity instanceof Player || (strayBypass.getValue() && entity instanceof Zombie) || (allEntities.getValue() && entity != null)) {
+					if (isValidTarget(entity)) {
 						if (entity instanceof Player player) {
 							if (checkShield.getValue() && player.isBlocking() && !WorldUtils.isShieldFacingAway(player))
 								return;
@@ -227,6 +230,14 @@ public final class TriggerBot extends Module implements TickListener, AttackList
 				}
 			}
 		} catch (Exception ignored) {}
+	}
+
+	private boolean isValidTarget(Entity entity) {
+		if (entity instanceof Player player)
+			return WorldUtils.isValidCombatPlayer(player);
+
+		return (strayBypass.getValue() && entity instanceof Zombie)
+				|| (allEntities.getValue() && entity != null && entity.isAlive() && !entity.isRemoved());
 	}
 
 	private HitResult getAimHitResult() {

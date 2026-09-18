@@ -7,8 +7,6 @@ import dev.lvstrng.argon.module.setting.ModeSetting;
 import dev.lvstrng.argon.module.setting.NumberSetting;
 import dev.lvstrng.argon.utils.EncryptedString;
 import java.awt.Color;
-import java.util.ArrayList;
-import java.util.List;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
@@ -33,6 +31,7 @@ public final class ArmorHUD extends Module implements HudListener {
             EquipmentSlot.FEET
     };
     private static final int CELL_SIZE = 30;
+	private static final int ITEM_SIZE = 16;
 
     private final NumberSetting x = new NumberSetting(EncryptedString.of("X"), 0, 3840, 10, 1);
     private final NumberSetting y = new NumberSetting(EncryptedString.of("Y"), 0, 2160, 300, 1);
@@ -65,48 +64,59 @@ public final class ArmorHUD extends Module implements HudListener {
     public void onRenderHud(HudEvent event) {
         if (mc.player == null || mc.level == null) return;
 
-        List<ItemStack> armor = new ArrayList<>(4);
+		ItemStack[] armor = new ItemStack[ARMOR_ORDER.length];
+		int armorCount = 0;
         for (EquipmentSlot slot : ARMOR_ORDER) {
             ItemStack stack = mc.player.getItemBySlot(slot);
-            if (!stack.isEmpty()) armor.add(stack);
+			if (!stack.isEmpty()) armor[armorCount++] = stack;
         }
-        if (armor.isEmpty()) return;
+		if (armorCount == 0) return;
 
         GuiGraphicsExtractor context = event.context;
         boolean horizontal = layout.isMode(Layout.Horizontal);
-        int contentWidth = horizontal ? armor.size() * CELL_SIZE : CELL_SIZE;
-        int contentHeight = horizontal ? CELL_SIZE : armor.size() * CELL_SIZE;
+		int contentWidth = horizontal ? armorCount * CELL_SIZE : CELL_SIZE;
+		int contentHeight = horizontal ? CELL_SIZE : armorCount * CELL_SIZE;
         int baseX = clamp(x.getValueInt(), 0, Math.max(0, context.guiWidth() - contentWidth));
         int baseY = clamp(y.getValueInt(), 0, Math.max(0, context.guiHeight() - contentHeight));
 
-        for (int index = 0; index < armor.size(); index++) {
+		// Extract the item models first. Indicators are put on the next GUI
+		// stratum so Minecraft's 26.2 item-atlas preparation cannot cover them.
+		for (int index = 0; index < armorCount; index++) {
             int cellX = baseX + (horizontal ? index * CELL_SIZE : 0);
             int cellY = baseY + (horizontal ? 0 : index * CELL_SIZE);
-            renderArmorPiece(context, armor.get(index), cellX, cellY);
+			int itemX = cellX + (CELL_SIZE - ITEM_SIZE) / 2;
+			context.item(armor[index], itemX, cellY);
         }
+
+		context.nextStratum();
+		for (int index = 0; index < armorCount; index++) {
+			int cellX = baseX + (horizontal ? index * CELL_SIZE : 0);
+			int cellY = baseY + (horizontal ? 0 : index * CELL_SIZE);
+			renderDurabilityIndicator(context, armor[index], cellX, cellY);
+		}
     }
 
-    private void renderArmorPiece(GuiGraphicsExtractor context, ItemStack stack, int cellX, int cellY) {
-        int itemX = cellX + (CELL_SIZE - 16) / 2;
-        context.item(stack, itemX, cellY);
-
+	private void renderDurabilityIndicator(GuiGraphicsExtractor context, ItemStack stack, int cellX, int cellY) {
         if (!stack.isDamageableItem() || stack.getMaxDamage() <= 0) return;
 
-        int remaining = Math.max(0, stack.getMaxDamage() - stack.getDamageValue());
-        float percentage = Math.max(0.0F, Math.min(1.0F, remaining / (float) stack.getMaxDamage()));
+		int maximum = stack.getMaxDamage();
+		int damage = clamp(stack.getDamageValue(), 0, maximum);
+		int remaining = maximum - damage;
+		float percentage = remaining / (float) maximum;
         int color = durabilityColor(percentage);
+		int itemX = cellX + (CELL_SIZE - ITEM_SIZE) / 2;
 
         if (displayMode.isMode(DisplayMode.Bar)) {
             int barY = cellY + 19;
-            int width = Math.round(16.0F * percentage);
-            context.fill(itemX, barY, itemX + 16, barY + 3, 0xB0000000);
+			int width = Math.round(ITEM_SIZE * percentage);
+			context.fill(itemX, barY, itemX + ITEM_SIZE, barY + 3, 0xD0000000);
             if (width > 0) context.fill(itemX, barY, itemX + width, barY + 3, color);
             return;
         }
 
         String text = displayMode.isMode(DisplayMode.Durability)
                 ? Integer.toString(remaining)
-                : (int) (percentage * 100.0F) + "%";
+				: Math.round(percentage * 100.0F) + "%";
         int textX = cellX + (CELL_SIZE - mc.font.width(text)) / 2;
         context.text(mc.font, text, textX, cellY + 18, color, true);
     }

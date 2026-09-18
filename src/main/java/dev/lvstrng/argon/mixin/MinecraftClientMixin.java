@@ -11,6 +11,7 @@ import dev.lvstrng.argon.module.modules.combat.Velocity;
 import dev.lvstrng.argon.module.modules.blatant.BoatFly;
 import dev.lvstrng.argon.module.modules.blatant.Fly;
 import dev.lvstrng.argon.module.modules.misc.Freecam;
+import dev.lvstrng.argon.module.modules.misc.AntiBot;
 import dev.lvstrng.argon.module.modules.render.BlockESP;
 import dev.lvstrng.argon.module.modules.render.TargetHud;
 import net.minecraft.client.Minecraft;
@@ -37,6 +38,7 @@ public class MinecraftClientMixin {
 		Freecam.onWorldChanged();
 		BlockESP.onWorldChanged();
 		TargetHud.onWorldChanged();
+		AntiBot.onWorldChanged();
 	}
 
 	@Shadow

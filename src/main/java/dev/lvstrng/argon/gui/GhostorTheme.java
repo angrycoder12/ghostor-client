@@ -44,6 +44,8 @@ public final class GhostorTheme {
     public static final int FRIENDS_MIN_HEIGHT = 300;
     public static final int BLOCK_SELECTOR_MIN_WIDTH = 640;
     public static final int BLOCK_SELECTOR_MIN_HEIGHT = 480;
+	public static final int MOB_SELECTOR_MIN_WIDTH = 650;
+	public static final int MOB_SELECTOR_MIN_HEIGHT = 500;
 	public static final int CONFIG_MIN_WIDTH = 500;
 	public static final int CONFIG_MIN_HEIGHT = 390;
 	public static final int CONFIG_FORM_MIN_WIDTH = 380;
@@ -97,12 +99,14 @@ public final class GhostorTheme {
                 radius + 1, radius + 1, radius + 1, radius + 1, 1, 16);
     }
 
-    public static void resizeHandle(GuiGraphicsExtractor context, int right, int bottom, boolean highlighted) {
+	public static void resizeHandle(GuiGraphicsExtractor context, int right, int bottom, boolean highlighted) {
         Color color = highlighted ? ACCENT_HOVER : ACCENT_BORDER;
-        context.fill(right - 15, bottom - 5, right - 5, bottom - 3, color.getRGB());
-        context.fill(right - 5, bottom - 15, right - 3, bottom - 3, color.getRGB());
-        context.fill(right - 11, bottom - 9, right - 5, bottom - 7, color.getRGB());
-        context.fill(right - 9, bottom - 11, right - 7, bottom - 7, color.getRGB());
+		RenderUtils.renderCircle(context, color, right - 5.0D, bottom - 5.0D, 1.5D, 16);
+		RenderUtils.renderCircle(context, color, right - 9.0D, bottom - 5.0D, 1.5D, 16);
+		RenderUtils.renderCircle(context, color, right - 5.0D, bottom - 9.0D, 1.5D, 16);
+		RenderUtils.renderCircle(context, color, right - 13.0D, bottom - 5.0D, 1.25D, 16);
+		RenderUtils.renderCircle(context, color, right - 9.0D, bottom - 9.0D, 1.25D, 16);
+		RenderUtils.renderCircle(context, color, right - 5.0D, bottom - 13.0D, 1.25D, 16);
     }
 
 	private static Color color(int argb) {

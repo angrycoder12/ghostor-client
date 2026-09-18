@@ -9,12 +9,14 @@ import dev.lvstrng.argon.gui.components.ThemeManagerPanel;
 import dev.lvstrng.argon.gui.layout.GuiBounds;
 import dev.lvstrng.argon.gui.layout.GuiLayoutState;
 import dev.lvstrng.argon.gui.screens.BlockSelectorScreen;
+import dev.lvstrng.argon.gui.screens.MobSelectorScreen;
 import dev.lvstrng.argon.gui.theme.ThemeManager;
 import dev.lvstrng.argon.gui.theme.ThemeParticles;
 import dev.lvstrng.argon.module.Category;
 import dev.lvstrng.argon.module.modules.client.ClickGUI;
 import dev.lvstrng.argon.module.modules.client.SelfDestruct;
 import dev.lvstrng.argon.module.modules.render.BlockESP;
+import dev.lvstrng.argon.module.modules.render.MobESP;
 import dev.lvstrng.argon.config.ConfigManager;
 import dev.lvstrng.argon.config.ConfigManager.ImportedConfig;
 import dev.lvstrng.argon.utils.ColorUtils;
@@ -23,8 +25,11 @@ import dev.lvstrng.argon.utils.RenderUtils;
 import dev.lvstrng.argon.utils.TextRenderer;
 import java.awt.Color;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
@@ -38,7 +43,7 @@ import static dev.lvstrng.argon.Argon.mc;
 
 public final class ClickGui extends Screen {
     private enum PanelLayer {
-		MAIN, FRIENDS, BLOCK_SELECTOR, CONFIGS, CONFIG_FORM, THEMES
+        MAIN, FRIENDS, BLOCK_SELECTOR, MOB_SELECTOR, CONFIGS, CONFIG_FORM, THEMES
     }
 
     private static final int SIDEBAR_WIDTH = 182;
@@ -48,6 +53,8 @@ public final class ClickGui extends Screen {
     private static final int BOMB_SIZE = 68;
     private static final int DEFAULT_BLOCK_SELECTOR_WIDTH = 800;
     private static final int DEFAULT_BLOCK_SELECTOR_HEIGHT = 620;
+	private static final int DEFAULT_MOB_SELECTOR_WIDTH = 800;
+	private static final int DEFAULT_MOB_SELECTOR_HEIGHT = 620;
 	private static final int DEFAULT_CONFIG_WIDTH = ConfigManagerPanel.PREFERRED_WIDTH;
 	private static final int DEFAULT_CONFIG_HEIGHT = ConfigManagerPanel.PREFERRED_HEIGHT;
 	private static final int DEFAULT_CONFIG_FORM_WIDTH = ConfigFormPanel.PREFERRED_WIDTH;
@@ -64,10 +71,12 @@ public final class ClickGui extends Screen {
 	private final ThemeManagerPanel themesPanel = new ThemeManagerPanel(themeManager, this::closeThemesPanel);
 	private final ThemeParticles themeParticles = new ThemeParticles();
     private final List<PanelLayer> panelStack = new ArrayList<>(List.of(
-			PanelLayer.MAIN, PanelLayer.FRIENDS, PanelLayer.BLOCK_SELECTOR,
+			PanelLayer.MAIN, PanelLayer.FRIENDS, PanelLayer.BLOCK_SELECTOR, PanelLayer.MOB_SELECTOR,
 			PanelLayer.CONFIGS, PanelLayer.CONFIG_FORM, PanelLayer.THEMES));
     private Category selectedCategory = Category.COMBAT;
     private String search = "";
+	private final Set<dev.lvstrng.argon.module.Module> searchMatches =
+			Collections.newSetFromMap(new IdentityHashMap<>());
     private boolean searchFocused;
     private boolean friendsOpen;
 	private boolean configsOpen;
@@ -75,10 +84,13 @@ public final class ClickGui extends Screen {
 	private boolean themesOpen;
     private boolean childScreenOpen;
     private BlockSelectorScreen blockSelector;
+	private MobSelectorScreen mobSelector;
     private final GuiBounds mainBounds = new GuiBounds(GhostorTheme.MAIN_MIN_WIDTH, GhostorTheme.MAIN_MIN_HEIGHT);
     private final GuiBounds friendsBounds = new GuiBounds(GhostorTheme.FRIENDS_MIN_WIDTH, GhostorTheme.FRIENDS_MIN_HEIGHT);
     private final GuiBounds blockSelectorBounds = new GuiBounds(
             GhostorTheme.BLOCK_SELECTOR_MIN_WIDTH, GhostorTheme.BLOCK_SELECTOR_MIN_HEIGHT);
+	private final GuiBounds mobSelectorBounds = new GuiBounds(
+			GhostorTheme.MOB_SELECTOR_MIN_WIDTH, GhostorTheme.MOB_SELECTOR_MIN_HEIGHT);
 	private final GuiBounds configBounds = new GuiBounds(GhostorTheme.CONFIG_MIN_WIDTH, GhostorTheme.CONFIG_MIN_HEIGHT);
 	private final GuiBounds configFormBounds = new GuiBounds(
 			GhostorTheme.CONFIG_FORM_MIN_WIDTH, GhostorTheme.CONFIG_FORM_MIN_HEIGHT);
@@ -107,13 +119,21 @@ public final class ClickGui extends Screen {
     }
 
     public boolean isModuleVisible(dev.lvstrng.argon.module.Module module) {
-        if (search.isBlank()) {
-            return true;
-        }
-        String query = search.toLowerCase(Locale.ROOT);
-        return module.getName().toString().toLowerCase(Locale.ROOT).contains(query)
-                || (module.getDescription() != null && module.getDescription().toString().toLowerCase(Locale.ROOT).contains(query));
+		return search.isBlank() || searchMatches.contains(module);
     }
+
+	private void refreshSearchMatches() {
+		searchMatches.clear();
+		if (search.isBlank()) return;
+		String query = search.toLowerCase(Locale.ROOT);
+		for (dev.lvstrng.argon.module.Module module : Argon.INSTANCE.getModuleManager().getModules()) {
+			if (module.getName().toString().toLowerCase(Locale.ROOT).contains(query)
+					|| module.getDescription() != null
+					&& module.getDescription().toString().toLowerCase(Locale.ROOT).contains(query)) {
+				searchMatches.add(module);
+			}
+		}
+	}
 
     public Category getSelectedCategory() {
         return selectedCategory;
@@ -121,12 +141,14 @@ public final class ClickGui extends Screen {
 
 	public boolean isDraggingAlready() {
 		return mainBounds.isInteracting() || friendsBounds.isInteracting() || blockSelectorBounds.isInteracting()
+				|| mobSelectorBounds.isInteracting()
 				|| configBounds.isInteracting() || configFormBounds.isInteracting() || themesBounds.isInteracting();
     }
 
     public boolean isTextInputFocused() {
         return searchFocused || (friendsOpen && friendsPanel.isInputFocused())
 				|| (blockSelector != null && blockSelector.isInputFocused())
+				|| (mobSelector != null && mobSelector.isInputFocused())
 				|| (configsOpen && configPanel.isInputFocused())
 				|| (configFormOpen && configForm.isInputFocused())
 				|| (themesOpen && themesPanel.isInputFocused());
@@ -146,12 +168,25 @@ public final class ClickGui extends Screen {
         return blockSelectorBounds;
     }
 
+	public GuiBounds mobSelectorBounds() { return mobSelectorBounds; }
+
+	public void openMobSelector(MobESP module) {
+		if (mobSelector == null || !mobSelector.isFor(module)) mobSelector = new MobSelectorScreen(this, module);
+		searchFocused = false;
+		friendsPanel.clearFocus();
+		if (blockSelector != null) blockSelector.clearInputFocus();
+		bringToFront(PanelLayer.MOB_SELECTOR);
+	}
+
+	public void closeMobSelector() { mobSelector = null; }
+
     public void openBlockSelector(BlockESP module) {
         if (blockSelector == null || !blockSelector.isFor(module)) {
             blockSelector = new BlockSelectorScreen(this, module);
         }
         searchFocused = false;
         friendsPanel.clearFocus();
+		if (mobSelector != null) mobSelector.clearInputFocus();
         bringToFront(PanelLayer.BLOCK_SELECTOR);
     }
 
@@ -163,6 +198,7 @@ public final class ClickGui extends Screen {
         friendsOpen = true;
         searchFocused = false;
         if (blockSelector != null) blockSelector.clearInputFocus();
+		if (mobSelector != null) mobSelector.clearInputFocus();
         bringToFront(PanelLayer.FRIENDS);
         if (layoutInitialized) {
             friendsBounds.clampToScreen(mc.getWindow().getWidth(), mc.getWindow().getHeight(),
@@ -176,6 +212,7 @@ public final class ClickGui extends Screen {
 		searchFocused = false;
 		friendsPanel.clearFocus();
 		if (blockSelector != null) blockSelector.clearInputFocus();
+		if (mobSelector != null) mobSelector.clearInputFocus();
 		bringToFront(PanelLayer.CONFIGS);
 		if (layoutInitialized) {
 			configBounds.clampToScreen(mc.getWindow().getWidth(), mc.getWindow().getHeight(), GhostorTheme.PANEL_MARGIN);
@@ -196,6 +233,7 @@ public final class ClickGui extends Screen {
 		friendsPanel.clearFocus();
 		configPanel.clearFocus();
 		if (blockSelector != null) blockSelector.clearInputFocus();
+		if (mobSelector != null) mobSelector.clearInputFocus();
 		bringToFront(PanelLayer.THEMES);
 		if (layoutInitialized) {
 			themesBounds.clampToScreen(mc.getWindow().getWidth(), mc.getWindow().getHeight(), GhostorTheme.PANEL_MARGIN);
@@ -238,7 +276,7 @@ public final class ClickGui extends Screen {
 
 	public GuiLayoutState.SavedLayout captureLayoutState() {
 		if (!layoutInitialized) return pendingLayout != null ? pendingLayout : layoutState.load();
-		return layoutState.capture(mainBounds, friendsBounds, blockSelectorBounds,
+		return layoutState.capture(mainBounds, friendsBounds, blockSelectorBounds, mobSelectorBounds,
 				configBounds, configFormBounds, themesBounds);
 	}
 
@@ -277,6 +315,7 @@ public final class ClickGui extends Screen {
                 case MAIN -> mainBounds.contains(mouseX, mouseY);
                 case FRIENDS -> friendsOpen && friendsBounds.contains(mouseX, mouseY);
                 case BLOCK_SELECTOR -> blockSelector != null && blockSelectorBounds.contains(mouseX, mouseY);
+				case MOB_SELECTOR -> mobSelector != null && mobSelectorBounds.contains(mouseX, mouseY);
 				case CONFIGS -> configsOpen && configBounds.contains(mouseX, mouseY);
 				case CONFIG_FORM -> configFormOpen && configFormBounds.contains(mouseX, mouseY);
 				case THEMES -> themesOpen && themesBounds.contains(mouseX, mouseY);
@@ -292,6 +331,7 @@ public final class ClickGui extends Screen {
 			if (layer == PanelLayer.MAIN
 					|| layer == PanelLayer.FRIENDS && friendsOpen
 					|| layer == PanelLayer.BLOCK_SELECTOR && blockSelector != null
+					|| layer == PanelLayer.MOB_SELECTOR && mobSelector != null
 					|| layer == PanelLayer.CONFIGS && configsOpen
 					|| layer == PanelLayer.CONFIG_FORM && configFormOpen
 					|| layer == PanelLayer.THEMES && themesOpen) return layer;
@@ -312,6 +352,7 @@ public final class ClickGui extends Screen {
         if (layer != PanelLayer.BLOCK_SELECTOR && blockSelector != null) {
             layoutChanged |= blockSelector.loseFocus();
         }
+		if (layer != PanelLayer.MOB_SELECTOR && mobSelector != null) layoutChanged |= mobSelector.loseFocus();
 		if (layer != PanelLayer.CONFIGS) {
 			layoutChanged |= configBounds.endInteraction();
 			configPanel.clearFocus();
@@ -407,6 +448,9 @@ public final class ClickGui extends Screen {
             case BLOCK_SELECTOR -> {
                 if (blockSelector != null) blockSelector.render(context, mouseX, mouseY, delta);
             }
+			case MOB_SELECTOR -> {
+				if (mobSelector != null) mobSelector.render(context, mouseX, mouseY, delta);
+			}
 			case CONFIGS -> {
 				if (!configsOpen) return;
 				configPanel.render(context, mouseX, mouseY);
@@ -441,6 +485,8 @@ public final class ClickGui extends Screen {
             int friendsHeight = Math.min(FriendsPanel.PREFERRED_HEIGHT, usableHeight);
             int selectorWidth = Math.min(DEFAULT_BLOCK_SELECTOR_WIDTH, usableWidth);
             int selectorHeight = Math.min(DEFAULT_BLOCK_SELECTOR_HEIGHT, usableHeight);
+			int mobSelectorWidth = Math.min(DEFAULT_MOB_SELECTOR_WIDTH, usableWidth);
+			int mobSelectorHeight = Math.min(DEFAULT_MOB_SELECTOR_HEIGHT, usableHeight);
 			int configsWidth = Math.min(DEFAULT_CONFIG_WIDTH, usableWidth);
 			int configsHeight = Math.min(DEFAULT_CONFIG_HEIGHT, usableHeight);
 			int formWidth = Math.min(DEFAULT_CONFIG_FORM_WIDTH, usableWidth);
@@ -464,6 +510,9 @@ public final class ClickGui extends Screen {
                     mainX + Math.min(240, Math.max(40, mainWidth / 4)));
             blockSelectorBounds.initialize(selectorX, (screenHeight - selectorHeight) / 2,
                     selectorWidth, selectorHeight);
+			mobSelectorBounds.initialize(Math.max(GhostorTheme.PANEL_MARGIN, selectorX - 22),
+					Math.max(GhostorTheme.PANEL_MARGIN, (screenHeight - mobSelectorHeight) / 2 + 18),
+					mobSelectorWidth, mobSelectorHeight);
 			configBounds.initialize(Math.max(GhostorTheme.PANEL_MARGIN,
 					mainX + mainWidth - configsWidth / 2), (screenHeight - configsHeight) / 2,
 					configsWidth, configsHeight);
@@ -506,6 +555,7 @@ public final class ClickGui extends Screen {
 		if (saved.main != null) saved.main.applyTo(mainBounds);
 		if (saved.friends != null) saved.friends.applyTo(friendsBounds);
 		if (saved.blockSelector != null) saved.blockSelector.applyTo(blockSelectorBounds);
+		if (saved.mobSelector != null) saved.mobSelector.applyTo(mobSelectorBounds);
 		if (saved.configs != null) saved.configs.applyTo(configBounds);
 		if (saved.configForm != null) saved.configForm.applyTo(configFormBounds);
 		if (saved.themes != null) saved.themes.applyTo(themesBounds);
@@ -517,6 +567,7 @@ public final class ClickGui extends Screen {
 		boolean changed = mainBounds.clampToScreen(screenWidth, screenHeight, GhostorTheme.PANEL_MARGIN);
 		changed |= friendsBounds.clampToScreen(screenWidth, screenHeight, GhostorTheme.PANEL_MARGIN);
 		changed |= blockSelectorBounds.clampToScreen(screenWidth, screenHeight, GhostorTheme.PANEL_MARGIN);
+		changed |= mobSelectorBounds.clampToScreen(screenWidth, screenHeight, GhostorTheme.PANEL_MARGIN);
 		changed |= configBounds.clampToScreen(screenWidth, screenHeight, GhostorTheme.PANEL_MARGIN);
 		changed |= configFormBounds.clampToScreen(screenWidth, screenHeight, GhostorTheme.PANEL_MARGIN);
 		changed |= themesBounds.clampToScreen(screenWidth, screenHeight, GhostorTheme.PANEL_MARGIN);
@@ -525,7 +576,7 @@ public final class ClickGui extends Screen {
 
     public void saveLayout() {
         if (layoutInitialized) {
-			layoutState.save(mainBounds, friendsBounds, blockSelectorBounds,
+			layoutState.save(mainBounds, friendsBounds, blockSelectorBounds, mobSelectorBounds,
 					configBounds, configFormBounds, themesBounds);
 			ConfigManager.notifyChanged();
         }
@@ -644,6 +695,7 @@ public final class ClickGui extends Screen {
 		if (top == PanelLayer.CONFIG_FORM) { configForm.keyPressed(keyCode); return true; }
 		if (top == PanelLayer.CONFIGS) { configPanel.keyPressed(keyCode); return true; }
 		if (top == PanelLayer.BLOCK_SELECTOR) { blockSelector.keyPressed(keyInput); return true; }
+		if (top == PanelLayer.MOB_SELECTOR) { mobSelector.keyPressed(keyInput); return true; }
 		if (top == PanelLayer.FRIENDS) { friendsPanel.keyPressed(keyCode); return true; }
         if (searchFocused) {
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
@@ -651,6 +703,7 @@ public final class ClickGui extends Screen {
             } else if (keyCode == GLFW.GLFW_KEY_BACKSPACE && !search.isEmpty()) {
                 int end = search.offsetByCodePoints(search.length(), -1);
                 search = search.substring(0, end);
+				refreshSearchMatches();
             }
             return true;
         }
@@ -676,6 +729,7 @@ public final class ClickGui extends Screen {
 		}
 		if (top == PanelLayer.CONFIGS) return true;
 		if (top == PanelLayer.BLOCK_SELECTOR) { blockSelector.charTyped(charInput); return true; }
+		if (top == PanelLayer.MOB_SELECTOR) { mobSelector.charTyped(charInput); return true; }
 		if (top == PanelLayer.FRIENDS && charInput.isAllowedChatCharacter()
                 && friendsPanel.charTyped(charInput.codepointAsString())) {
             return true;
@@ -683,6 +737,7 @@ public final class ClickGui extends Screen {
 		if (top != PanelLayer.MAIN) return true;
         if (searchFocused && charInput.isAllowedChatCharacter() && search.length() < 64) {
             search += charInput.codepointAsString();
+			refreshSearchMatches();
             return true;
         }
         return super.charTyped(charInput);
@@ -710,6 +765,7 @@ public final class ClickGui extends Screen {
             boolean layoutChanged = mainBounds.endInteraction();
             layoutChanged |= friendsBounds.endInteraction();
             if (blockSelector != null) layoutChanged |= blockSelector.loseFocus();
+			if (mobSelector != null) layoutChanged |= mobSelector.loseFocus();
 			layoutChanged |= configBounds.endInteraction();
 			layoutChanged |= configFormBounds.endInteraction();
 			layoutChanged |= themesBounds.endInteraction();
@@ -726,6 +782,7 @@ public final class ClickGui extends Screen {
                 blockSelector.mouseClicked(mouseX, mouseY, button);
                 yield true;
             }
+			case MOB_SELECTOR -> { mobSelector.mouseClicked(mouseX, mouseY, button); yield true; }
             case FRIENDS -> {
                 handleFriendsClick(mouseX, mouseY, button);
                 yield true;
@@ -884,6 +941,7 @@ public final class ClickGui extends Screen {
 		if (blockSelector != null && blockSelector.mouseDragged(mouseX, mouseY, click.button())) {
 			return true;
 		}
+		if (mobSelector != null && mobSelector.mouseDragged(mouseX, mouseY, click.button())) return true;
 		if (themesBounds.isInteracting()) {
 			themesBounds.update(mouseX, mouseY, screenWidth, screenHeight, GhostorTheme.PANEL_MARGIN);
 			syncBounds();
@@ -930,6 +988,7 @@ public final class ClickGui extends Screen {
 
         switch (topPanel) {
             case BLOCK_SELECTOR -> blockSelector.mouseScrolled(physicalX, physicalY, verticalAmount);
+			case MOB_SELECTOR -> mobSelector.mouseScrolled(physicalX, physicalY, verticalAmount);
             case FRIENDS -> friendsPanel.mouseScrolled(physicalX, physicalY, verticalAmount);
 			case CONFIGS -> configPanel.mouseScrolled(physicalX, physicalY, verticalAmount);
 			case CONFIG_FORM -> { }
@@ -950,6 +1009,7 @@ public final class ClickGui extends Screen {
 		if (blockSelector != null && blockSelector.mouseReleased(click.button())) {
 			return true;
 		}
+		if (mobSelector != null && mobSelector.mouseReleased(click.button())) return true;
 		if (themesPanel.mouseReleased(click.button())) return true;
         double scale = Minecraft.getInstance().getWindow().getGuiScale();
         double mouseX = click.x() * scale;
@@ -1009,9 +1069,11 @@ public final class ClickGui extends Screen {
             blockSelector.onParentClosing();
             blockSelector = null;
         }
+		if (mobSelector != null) { mobSelector.onParentClosing(); mobSelector = null; }
         mainBounds.endInteraction();
         friendsBounds.endInteraction();
         blockSelectorBounds.endInteraction();
+		mobSelectorBounds.endInteraction();
 		configBounds.endInteraction();
 		configFormBounds.endInteraction();
 		themesBounds.endInteraction();

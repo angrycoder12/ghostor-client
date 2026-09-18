@@ -19,6 +19,14 @@ import net.minecraft.client.multiplayer.PlayerInfo;
 
 public final class HUD extends Module implements HudListener {
 	private static final CharSequence argon = EncryptedString.of("Ghostor Client |");
+	// Original Ghostor Module HUD visual constants (d93b016 / 9a2134a).
+	private static final Color INFO_BACKGROUND = new Color(17, 22, 31, 248);
+	private static final Color INFO_BORDER = new Color(76, 89, 112, 105);
+	private static final Color MODULE_BACKGROUND = new Color(0, 0, 0, 175);
+	private static final int MODULE_START_Y = 55;
+	private static final int MODULE_TEXT_X_CUSTOM = 5;
+	private static final int MODULE_TEXT_X_VANILLA = 8;
+	private static final int MODULE_ROW_GAP = 0;
 	private final BooleanSetting info = new BooleanSetting(EncryptedString.of("Info"), true);
 	private final BooleanSetting modules = new BooleanSetting("Modules", true)
 			.setDescription(EncryptedString.of("Renders module array list"));
@@ -85,8 +93,8 @@ public final class HUD extends Module implements HudListener {
 						ping += "N/A |";
 					}
 
-				GhostorTheme.panel(context, 5, 6, argonOffset2 + TextRenderer.getWidth(fps) + TextRenderer.getWidth(ping) + TextRenderer.getWidth(server) + 35, 30, GhostorTheme.SURFACE, 6);
-				GhostorTheme.outline(context, 5, 6, argonOffset2 + TextRenderer.getWidth(fps) + TextRenderer.getWidth(ping) + TextRenderer.getWidth(server) + 35, 30, GhostorTheme.BORDER, 6);
+				GhostorTheme.panel(context, 5, 6, argonOffset2 + TextRenderer.getWidth(fps) + TextRenderer.getWidth(ping) + TextRenderer.getWidth(server) + 35, 30, INFO_BACKGROUND, 6);
+				GhostorTheme.outline(context, 5, 6, argonOffset2 + TextRenderer.getWidth(fps) + TextRenderer.getWidth(ping) + TextRenderer.getWidth(server) + 35, 30, INFO_BORDER, 6);
 
 					TextRenderer.drawString(argon, context, argonOffset, 12, Utils.getMainColor(255, 4).getRGB());
 					argonOffset += TextRenderer.getWidth(argon);
@@ -98,19 +106,20 @@ public final class HUD extends Module implements HudListener {
 					RenderUtils.scaledProjection(context);
 				}
 				if (modules.getValue()) {
-					int offset = 55;
-					for (Module module : enabledModules) {
+					int offset = MODULE_START_Y;
+					for (int index = 0; index < enabledModules.size(); index++) {
+						Module module = enabledModules.get(index);
 						RenderUtils.unscaledProjection(context);
 						int charOffset = 6 + TextRenderer.getWidth(module.getName());
 
-			RenderUtils.renderRoundedQuad(context, new Color(0, 0, 0, 175), 0, offset - 4, (charOffset + 5), offset + (mc.font.lineHeight * 2) - 1, 0, 0, 0, 5, 10);
-						context.fillGradient(0, offset - 4, 2, offset + (mc.font.lineHeight * 2), Utils.getMainColor(255, (enabledModules.indexOf(module))).getRGB(), Utils.getMainColor(255, (enabledModules.indexOf(module)) + 1).getRGB());
+			RenderUtils.renderRoundedQuad(context, MODULE_BACKGROUND, 0, offset - 4, (charOffset + 5), offset + (mc.font.lineHeight * 2) - 1, 0, 0, 0, 5, 10);
+						context.fillGradient(0, offset - 4, 2, offset + (mc.font.lineHeight * 2), Utils.getMainColor(255, index).getRGB(), Utils.getMainColor(255, index + 1).getRGB());
 
-						int charOffset2 = customFont ? 5 : 8;
+						int charOffset2 = customFont ? MODULE_TEXT_X_CUSTOM : MODULE_TEXT_X_VANILLA;
 
-						TextRenderer.drawString(module.getName(), context, charOffset2, offset + (customFont ? 1 : 0), Utils.getMainColor(255, (enabledModules.indexOf(module))).getRGB());
+						TextRenderer.drawString(module.getName(), context, charOffset2, offset + (customFont ? 1 : 0), Utils.getMainColor(255, index).getRGB());
 
-						offset += (mc.font.lineHeight * 2) + 3;
+						offset += (mc.font.lineHeight * 2) + MODULE_ROW_GAP;
 						RenderUtils.scaledProjection(context);
 					}
 				}

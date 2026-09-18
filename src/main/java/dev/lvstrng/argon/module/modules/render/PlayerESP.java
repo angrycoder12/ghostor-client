@@ -6,14 +6,15 @@ import dev.lvstrng.argon.module.Category;
 import dev.lvstrng.argon.module.Module;
 import dev.lvstrng.argon.module.modules.client.ClickGUI;
 import dev.lvstrng.argon.module.modules.combat.Backtrack;
+import dev.lvstrng.argon.module.modules.misc.AntiBot;
 import dev.lvstrng.argon.module.setting.BooleanSetting;
+import dev.lvstrng.argon.module.setting.ColorSetting;
 import dev.lvstrng.argon.module.setting.ModeSetting;
 import dev.lvstrng.argon.module.setting.NumberSetting;
 import dev.lvstrng.argon.utils.ColorUtils;
 import dev.lvstrng.argon.utils.EncryptedString;
 import dev.lvstrng.argon.utils.ProjectionUtils;
 import dev.lvstrng.argon.utils.RenderUtils;
-import dev.lvstrng.argon.utils.Utils;
 import java.awt.*;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.world.entity.Entity;
@@ -31,6 +32,8 @@ public final class PlayerESP extends Module implements GameRenderListener, HudLi
 	private final NumberSetting width = new NumberSetting(EncryptedString.of("Line width"), 1, 10, 1, 1);
 	private final BooleanSetting tracers = new BooleanSetting(EncryptedString.of("Tracers"), false)
 			.setDescription(EncryptedString.of("Draws a line from your player to the other"));
+	private final ColorSetting tracerColor = new ColorSetting(
+			EncryptedString.of("Tracer Color"), new Color(145, 125, 255, 210));
 	private final BooleanSetting threeDOutline = new BooleanSetting(EncryptedString.of("3D box outline"), false);
 	private final BooleanSetting twoDOutline = new BooleanSetting(EncryptedString.of("2D Outline"), false);
 
@@ -39,7 +42,8 @@ public final class PlayerESP extends Module implements GameRenderListener, HudLi
 				EncryptedString.of("Renders players through walls"),
 				-1,
 				Category.RENDER);
-		addSettings(alpha, mode, threeDOutline, twoDOutline, width, tracers);
+		addSettings(alpha, mode, threeDOutline, twoDOutline, width, tracers,
+				tracerColor.visibleWhen(tracers::getValue));
 	}
 
 	@Override
@@ -74,9 +78,10 @@ public final class PlayerESP extends Module implements GameRenderListener, HudLi
 					RenderUtils.renderBoxOutline(box, getColor(255), width.getValueInt());
 			}
 
-			if (tracers.getValue() && mc.hitResult != null) {
-				RenderUtils.renderLine(Utils.getMainColor(255, 1), mc.hitResult.getLocation(),
-						Backtrack.getRealPosition(player, RenderUtils.tickProgress()));
+			if (tracers.getValue()) {
+				Vec3 start = RenderUtils.getCameraPos().add(mc.player.getViewVector(event.delta).scale(0.12D));
+				RenderUtils.renderLine(tracerColor.getColor(), start, box.getCenter(),
+						Math.max(1.0F, width.getValueFloat()), true);
 			}
 		}
 	}
@@ -108,7 +113,8 @@ public final class PlayerESP extends Module implements GameRenderListener, HudLi
 	}
 
 	private boolean shouldRender(Entity entity) {
-		return entity instanceof Player player && player != mc.player && player.isAlive();
+		return entity instanceof Player player && player != mc.player && player.isAlive()
+				&& !player.isRemoved() && !player.isSpectator() && !AntiBot.renderBot(player);
 	}
 
 	private AABB getRenderBox(Player player, float tickDelta) {

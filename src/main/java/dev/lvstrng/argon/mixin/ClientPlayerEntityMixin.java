@@ -4,6 +4,7 @@ import com.mojang.authlib.GameProfile;
 import dev.lvstrng.argon.event.EventManager;
 import dev.lvstrng.argon.event.events.MovementPacketListener;
 import dev.lvstrng.argon.event.events.PlayerTickListener;
+import dev.lvstrng.argon.module.modules.combat.BlockIn;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.AbstractClientPlayer;
@@ -29,6 +30,12 @@ public class ClientPlayerEntityMixin extends AbstractClientPlayer {
 	@Inject(method = "sendPosition", at = @At("HEAD"))
 	private void onSendMovementPackets(CallbackInfo ci) {
 		EventManager.fire(new MovementPacketListener.MovementPacketEvent());
+		BlockIn.prepareMovementPacket();
+	}
+
+	@Inject(method = "sendPosition", at = @At("TAIL"))
+	private void ghostor$finishMovementPacket(CallbackInfo ci) {
+		BlockIn.finishMovementPacket();
 	}
 
 	@Inject(method = "tick", at = @At("HEAD"))

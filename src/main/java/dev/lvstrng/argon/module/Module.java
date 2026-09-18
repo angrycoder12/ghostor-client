@@ -79,6 +79,7 @@ public abstract class Module implements Serializable {
 		if (disabled && enabled) setEnabled(false);
 		clientDisabled = disabled;
 		category = disabled ? Category.DISABLED : originalCategory;
+		invalidateModuleIndex();
 		// Re-enabled modules deliberately remain toggled off.
 		if (!disabled) enabled = false;
 		ConfigManager.notifyChanged();
@@ -92,6 +93,7 @@ public abstract class Module implements Serializable {
 
 	public void setName(CharSequence name) {
 		this.name = name;
+		invalidateModuleIndex();
 	}
 
 	public void setDescription(CharSequence description) {
@@ -135,6 +137,12 @@ public abstract class Module implements Serializable {
 		if (this.enabled == enabled) return;
 		this.enabled = enabled;
 		ConfigManager.notifyChanged();
+	}
+
+	private void invalidateModuleIndex() {
+		if (Argon.INSTANCE != null && Argon.INSTANCE.getModuleManager() != null) {
+			Argon.INSTANCE.getModuleManager().invalidateCategoryIndex();
+		}
 	}
 
 }

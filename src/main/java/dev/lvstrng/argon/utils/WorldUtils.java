@@ -2,6 +2,7 @@ package dev.lvstrng.argon.utils;
 
 import dev.lvstrng.argon.Argon;
 import dev.lvstrng.argon.module.modules.client.Friends;
+import dev.lvstrng.argon.module.modules.misc.AntiBot;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.tags.ItemTags;
@@ -58,16 +59,20 @@ public final class WorldUtils {
 	}
 
 	public static Player findNearestPlayer(Player toPlayer, float range, boolean seeOnly, boolean excludeFriends) {
+		if (toPlayer == null || mc.level == null) return null;
+
 		float minRange = Float.MAX_VALUE;
 		Player minPlayer = null;
 
 		for (Player player : mc.level.players()) {
+			if (!isValidCombatPlayer(player)) continue;
+
 			float distance = (float) distance(toPlayer.position(), player.position());
 
 			if(excludeFriends && Argon.INSTANCE.getModuleManager().getModule(Friends.class).disableAimAssist.getValue() && Argon.INSTANCE.getFriendManager().isFriend(player))
 				continue;
 
-			if (player != toPlayer && distance <= range && player.hasLineOfSight(toPlayer) == seeOnly) {
+			if (distance <= range && player.hasLineOfSight(toPlayer) == seeOnly) {
 				if (distance < minRange) {
 					minRange = distance;
 					minPlayer = player;
@@ -76,6 +81,12 @@ public final class WorldUtils {
 		}
 
 		return minPlayer;
+	}
+
+	/** Shared mandatory player validity gate used before combat target selection/attacks. */
+	public static boolean isValidCombatPlayer(Player player) {
+		return player != null && player != mc.player && player.isAlive()
+				&& !player.isRemoved() && !player.isSpectator() && !AntiBot.bot(player);
 	}
 
 	public static Vec3 getPlayerLookVec(float yaw, float pitch) {

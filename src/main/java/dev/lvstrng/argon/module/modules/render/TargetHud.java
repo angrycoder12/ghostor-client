@@ -11,6 +11,7 @@ import dev.lvstrng.argon.utils.MathUtils;
 import dev.lvstrng.argon.utils.RenderUtils;
 import dev.lvstrng.argon.utils.TextRenderer;
 import dev.lvstrng.argon.utils.Utils;
+import dev.lvstrng.argon.utils.WorldUtils;
 import java.awt.Color;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.PlayerFaceExtractor;
@@ -80,7 +81,7 @@ public final class TargetHud extends Module implements HudListener, EntityAttack
 			trackedLevel = mc.level;
 		}
 		Entity entity = event.target;
-		if (entity instanceof Player player && player != mc.player && player.isAlive()) {
+		if (entity instanceof Player player && WorldUtils.isValidCombatPlayer(player)) {
 			targetEntityId = player.getId();
 			lastAttackTime = nowMillis();
 			animation = Math.max(animation, 0.15F);
@@ -163,7 +164,7 @@ public final class TargetHud extends Module implements HudListener, EntityAttack
 		}
 
 		Entity entity = targetEntityId < 0 ? null : mc.level.getEntity(targetEntityId);
-		if (!(entity instanceof Player player) || player == mc.player || !player.isAlive() || player.isRemoved()) {
+		if (!(entity instanceof Player player) || !WorldUtils.isValidCombatPlayer(player)) {
 			clearTarget();
 			return null;
 		}

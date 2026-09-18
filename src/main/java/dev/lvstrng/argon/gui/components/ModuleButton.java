@@ -11,7 +11,6 @@ import dev.lvstrng.argon.utils.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 import static dev.lvstrng.argon.Argon.mc;
@@ -60,12 +59,17 @@ public final class ModuleButton {
 	}
 
 	public void render(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
-		if (parent.getY() + offset > Minecraft.getInstance().getWindow().getHeight())
-			return;
-
 		refreshSettingLayout();
+		double visibleHeight = Math.max(parent.getHeight(), animation.getValue());
+		if (!parent.intersectsViewport(parent.getY() + offset, parent.getY() + offset + visibleHeight)) {
+			for (RenderableSetting setting : settings) setting.mouseOver = false;
+			return;
+		}
+
 		for (RenderableSetting renderableSetting : settings)
-			if (renderableSetting.setting.isVisible()) renderableSetting.onUpdate();
+			if (renderableSetting.setting.isVisible() && isSettingInViewport(renderableSetting)) {
+				renderableSetting.onUpdate();
+			}
 
 		if (currentColor == null)
 			currentColor = new Color(0, 0, 0, 0);
@@ -107,7 +111,9 @@ public final class ModuleButton {
 		renderSettings(context, mouseX, mouseY, delta);
 
 		for(RenderableSetting renderableSetting : settings)
-			if(extended && renderableSetting.setting.isVisible()) renderableSetting.renderDescription(context, mouseX, mouseY, delta);
+			if(extended && renderableSetting.setting.isVisible() && isSettingInViewport(renderableSetting)) {
+				renderableSetting.renderDescription(context, mouseX, mouseY, delta);
+			}
 
 	}
 
@@ -137,16 +143,14 @@ public final class ModuleButton {
 		context.enableScissor(scissorX1, scissorY1, scissorX2, scissorY2);
 
 		for (RenderableSetting renderableSetting : settings)
-			if(renderableSetting.setting.isVisible() && animation.getValue() > parent.getHeight())
+			if(renderableSetting.setting.isVisible() && animation.getValue() > parent.getHeight()
+					&& isSettingInViewport(renderableSetting))
 				renderableSetting.render(context, mouseX, mouseY, delta);
 
 		for (RenderableSetting renderableSetting : settings) {
-			if(renderableSetting.setting.isVisible() && animation.getValue() > parent.getHeight()) {
-				if (renderableSetting instanceof Slider slider) {
-					RenderUtils.renderCircle(context, new Color(0, 0, 0, 170), (slider.parentX() + (Math.max(slider.lerpedOffsetX, 2.5))), slider.parentY() + slider.offset + slider.parentOffset() + 27.5, 6, 15);
-					RenderUtils.renderCircle(context, slider.currentColor1.brighter(), (slider.parentX() + (Math.max(slider.lerpedOffsetX, 2.5))) , slider.parentY() + slider.offset + slider.parentOffset() + 27.5, 5, 15);
-
-				} else if (renderableSetting instanceof MinMaxSlider slider) {
+			if(renderableSetting.setting.isVisible() && animation.getValue() > parent.getHeight()
+					&& isSettingInViewport(renderableSetting)) {
+				if (renderableSetting instanceof MinMaxSlider slider) {
 					RenderUtils.renderCircle(context, new Color(0, 0, 0, 170), (slider.parentX() + (Math.max(slider.lerpedOffsetMinX, 2.5))), slider.parentY() + slider.offset + slider.parentOffset() + 27.5, 6, 15);
 					RenderUtils.renderCircle(context, slider.currentColor1.brighter(), (slider.parentX() + (Math.max(slider.lerpedOffsetMinX, 2.5))), slider.parentY() + slider.offset + slider.parentOffset() + 27.5, 5, 15);
 
@@ -210,14 +214,24 @@ public final class ModuleButton {
 	}
 
 	public boolean isHovered(double mouseX, double mouseY) {
-		return mouseX > parent.getX()
+		return parent.containsViewport(mouseX, mouseY)
+				&& mouseX > parent.getX()
 				&& mouseX < parent.getX() + parent.getWidth()
 				&& mouseY > parent.getY() + offset
 				&& mouseY < parent.getY() + offset + parent.getHeight();
 	}
 
+	private boolean isSettingInViewport(RenderableSetting setting) {
+		double top = parent.getY() + offset + setting.offset;
+		return parent.intersectsViewport(top, top + parent.getHeight());
+	}
+
 	public int visibleSettingsCount() {
-		return (int) settings.stream().filter(setting -> setting.setting.isVisible()).count();
+		int count = 0;
+		for (RenderableSetting setting : settings) {
+			if (setting.setting.isVisible()) count++;
+		}
+		return count;
 	}
 
 	private void refreshSettingLayout() {

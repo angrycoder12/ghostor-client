@@ -198,6 +198,15 @@ public final class Window {
 		return height;
 	}
 
+	public boolean intersectsViewport(double top, double bottom) {
+		return bottom > prevY && top < prevY + contentHeight;
+	}
+
+	public boolean containsViewport(double mouseX, double mouseY) {
+		return mouseX > prevX && mouseX < prevX + width
+				&& mouseY > prevY && mouseY < prevY + contentHeight;
+	}
+
 	public boolean isHovered(double mouseX, double mouseY) {
 		return ((mouseX > x && mouseX < x + width) && (mouseY > y && mouseY < y + height));
 	}
